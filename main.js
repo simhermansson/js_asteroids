@@ -1,34 +1,3 @@
-// Game constants
-const GAME_SPEED = 1000 / 60;
-const CANVAS_BORDER_COLOUR = "gray";
-const CANVAS_BACKGROUND_COLOUR = "rgba(0, 0, 0, 0.5)";
-const BLUR_AMOUNT = 5;
-
-const canvas = document.getElementById("gameCanvas");
-const context = canvas.getContext("2d");
-context.shadowColor = "white";
-context.shadowOffsetX = 0;
-context.shadowOffsetY = 0;
-context.lineWidth = 2;
-context.font = "30px hyperspace";
-
-
-// Initialize game variables
-let maxAcceleration = 2;
-
-let leftKey = false;
-let rightKey = false;
-let upKey = false;
-let spaceKey = false;
-
-let gameObjects = [];
-let bullets = [];
-let maxAsteroids = 5;
-let currentAsteroidsOnScreen = 0;
-let maxBullets = 4;
-let score = 0;
-
-
 class gameObject {
     constructor(x, y, dx, dy) {
         this.x = x;
@@ -47,6 +16,7 @@ class gameObject {
     }
 }
 
+
 class Ship extends gameObject {
     constructor(x, y, dx, dy) {
         super(x, y, dx, dy);
@@ -61,6 +31,12 @@ class Ship extends gameObject {
         if (this.x < 0) this.x += canvas.width;
         this.y = (this.y + this.dy) % canvas.height;
         if (this.y < 0) this.y += canvas.height;
+    }
+
+
+    hyperjump() {
+        this.x = randomInRange(canvas.width);
+        this.y = randomInRange(canvas.height);
     }
 
 
@@ -111,6 +87,7 @@ class Ship extends gameObject {
     }
 }
 
+
 class Bullet extends gameObject {
     constructor(x, y, dx, dy) {
         super(x, y, dx, dy);
@@ -118,10 +95,9 @@ class Bullet extends gameObject {
     }
 
     update() {
-        for (let i = 0; i < gameObjects.length; i++) {
-            let o = gameObjects[i];
+        for (let i = 0; i < asteroids.length; i++) {
+            let o = asteroids[i];
             if (o.contains(this.x, this.y)) {
-                gameObjects.splice(i, 1);
                 o.kill();
                 return true;
             }
@@ -133,11 +109,12 @@ class Bullet extends gameObject {
 
 class Asteroid extends gameObject {
     constructor(x, y, dx, dy) {
-        currentAsteroidsOnScreen++;
         super(x, y, dx, dy);
-        this.shape = randomInRange(3);
+        this.shape = Math.round(randomInRange(2));
         this.points = [];
         this.alive = true;
+        this.exploded = false;
+        this.maxSpeed = 2;
     }
 
     update() {
@@ -210,11 +187,11 @@ class LargeAsteroid extends Asteroid {
     kill() {
         this.alive = false;
         score += this.points;
-        let a = new MediumAsteroid(this.x, this.y, randomInRange(maxAcceleration), randomInRange(maxAcceleration));
-        let b = new MediumAsteroid(this.x, this.y, randomInRange(maxAcceleration), randomInRange(maxAcceleration));
-        gameObjects.push(a);
-        gameObjects.push(b);
-        currentAsteroidsOnScreen--;
+        let rndSpeed = randomInRange(this.maxSpeed);
+        let a = new MediumAsteroid(this.x, this.y, randomInRange(rndSpeed), randomInRange(rndSpeed));
+        let b = new MediumAsteroid(this.x, this.y, randomInRange(-rndSpeed), randomInRange(-rndSpeed));
+        asteroids.push(a);
+        asteroids.push(b);
     }
 }
 
@@ -227,12 +204,13 @@ class MediumAsteroid extends Asteroid {
     }
 
     kill() {
+        this.alive = false;
         score += this.points;
-        let a = new SmallAsteroid(this.x, this.y, randomInRange(maxAcceleration), randomInRange(maxAcceleration));
-        let b = new SmallAsteroid(this.x, this.y, randomInRange(maxAcceleration), randomInRange(maxAcceleration));
-        gameObjects.push(a);
-        gameObjects.push(b);
-        currentAsteroidsOnScreen--;
+        let rndSpeed = randomInRange(this.maxSpeed);
+        let a = new SmallAsteroid(this.x, this.y, randomInRange(rndSpeed), randomInRange(rndSpeed));
+        let b = new SmallAsteroid(this.x, this.y, randomInRange(-rndSpeed), randomInRange(-rndSpeed));
+        asteroids.push(a);
+        asteroids.push(b);
     }
 }
 
@@ -245,23 +223,57 @@ class SmallAsteroid extends Asteroid {
     }
 
     kill() {
+        this.alive = false;
         score += this.points;
     }
 }
 
 
-// Start game
+// Game constants
+const GAME_SPEED = 1000 / 60;
+const CANVAS_BORDER_COLOUR = "gray";
+const CANVAS_BACKGROUND_COLOUR = "rgba(0, 0, 0, 0.5)";
+const BLUR_AMOUNT = 5;
+
+const canvas = document.getElementById("gameCanvas");
+const context = canvas.getContext("2d");
+context.shadowColor = "white";
+context.shadowOffsetX = 0;
+context.shadowOffsetY = 0;
+context.lineWidth = 2;
+
+
+// Initialize game variables
+let leftKey = false;
+let rightKey = false;
+let upKey = false;
+let spaceKey = false;
+
 let player = new Ship(canvas.width / 2, canvas.height / 2, 0, 0);
+
+let lives = [];
+for (let i = 0; i < 3; i++) addLife();
+let asteroids = [];
+let bullets = [];
+let maxAsteroids = 5;
+let maxBullets = 4;
+let maxBulletSpeed = 2;
+let score = 0;
+
+
+// Start game
 main();
 document.addEventListener("keydown", function(event) {
     const LEFT_KEY = 37;
     const RIGHT_KEY = 39;
     const UP_KEY = 38;
     const SPACE_KEY = 32;
+    const H_KEY = 72;
     if (event.keyCode === LEFT_KEY) leftKey = true;
     if (event.keyCode === RIGHT_KEY) rightKey = true;
     if (event.keyCode === UP_KEY) upKey = true;
     if (event.keyCode === SPACE_KEY) spaceKey = true;
+    if (event.keyCode === H_KEY) player.hyperjump();
 });
 
 document.addEventListener("keyup", function(event) {
@@ -284,7 +296,7 @@ function main() {
         updateObjects();
         drawText();
 
-        if (currentAsteroidsOnScreen === 0) {
+        if (asteroids.length === 0) {
             for (let i = 0; i < maxAsteroids; i++) {
                 spawnAsteroid();
             }
@@ -307,18 +319,17 @@ function clearCanvas() {
 
 
 function updateObjects() {
-    // Update gameObjects
-    for (let i = 0; i < gameObjects.length; i++) {
-        let o = gameObjects[i];
+    // Update asteroids
+    for (let i = 0; i < asteroids.length; i++) {
+        let o = asteroids[i];
         if (o.update()) {
-            gameObjects.splice(i, 1);
-            break;
+            asteroids.splice(i, 1);
+            i = Math.max(i-1, 0);
         } else {
             o.x = (o.x + o.dx) % canvas.width;
             if (o.x < 0) o.x += canvas.width;
             o.y = (o.y - o.dy) % canvas.height
             if (o.y < 0) o.y += canvas.height;
-
             o.draw();
         }
     }
@@ -328,13 +339,12 @@ function updateObjects() {
         let o = bullets[i];
         if (o.update()) {
             bullets.splice(i, 1);
-            break;
+            i = Math.max(i-1, 0);
         } else {
             o.x = (o.x + o.dx) % canvas.width;
             if (o.x < 0) o.x += canvas.width;
             o.y = (o.y - o.dy) % canvas.height
             if (o.y < 0) o.y += canvas.height;
-
             o.draw();
         }
     }
@@ -348,17 +358,37 @@ function updateObjects() {
 function drawText() {
     context.strokeStyle = "white";
     context.shadowBlur = BLUR_AMOUNT;
-    // Draw score
+
+    context.font = "30px hyperspace";
     context.strokeText(score, 10, 30);
+
+    for (let i = 0; i < lives.length; i++) {
+        lives[i].draw();
+    }
+
+    context.font = "20px hyperspace";
+    context.strokeText(0, canvas.width / 2, 20);
 }
 
 
 function spawnAsteroid() {
     let a = new LargeAsteroid(randomInRange(canvas.width),
                               randomInRange(canvas.height),
-                              randomInRange(maxAcceleration),
-                              randomInRange(maxAcceleration));
-    gameObjects.push(a);
+                              randomInRange(maxBulletSpeed),
+                              randomInRange(maxBulletSpeed));
+    asteroids.push(a);
+}
+
+
+function addLife() {
+    let s = new Ship((1 + lives.length) * 30, 60, 0, 0);
+    s.heading = 90;
+    lives.push(s);
+}
+
+
+function removeLife() {
+    lives.pop();
 }
 
 
@@ -380,7 +410,7 @@ function handleInput() {
 
 
 function randomInRange(n) {
-    return Math.round(Math.random() * n);
+    return Math.random() * n;
 }
 
 
