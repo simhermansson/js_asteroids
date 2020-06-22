@@ -35,8 +35,8 @@ class Ship extends gameObject {
 
 
     hyperjump() {
-        this.x = randomInRange(canvas.width);
-        this.y = randomInRange(canvas.height);
+        this.x = randomInRange(0, canvas.width);
+        this.y = randomInRange(0, canvas.height);
     }
 
 
@@ -83,7 +83,7 @@ class Ship extends gameObject {
     }
 
     kill() {
-
+        removeLife();
     }
 }
 
@@ -110,7 +110,7 @@ class Bullet extends gameObject {
 class Asteroid extends gameObject {
     constructor(x, y, dx, dy) {
         super(x, y, dx, dy);
-        this.shape = Math.round(randomInRange(2));
+        this.shape = Math.round(0, randomInRange(2));
         this.points = [];
         this.alive = true;
         this.exploded = false;
@@ -185,11 +185,14 @@ class LargeAsteroid extends Asteroid {
     }
 
     kill() {
+        timeLastDestroyed = Date.now();
         this.alive = false;
         score += this.points;
-        let rndSpeed = randomInRange(this.maxSpeed);
-        let a = new MediumAsteroid(this.x, this.y, randomInRange(rndSpeed), randomInRange(rndSpeed));
-        let b = new MediumAsteroid(this.x, this.y, randomInRange(-rndSpeed), randomInRange(-rndSpeed));
+        scoreInterval += this.points;
+        let a = new MediumAsteroid(this.x, this.y, randomInRange(-this.maxSpeed, this.maxSpeed),
+            randomInRange(-this.maxSpeed, this.maxSpeed));
+        let b = new MediumAsteroid(this.x, this.y, randomInRange(-this.maxSpeed, this.maxSpeed),
+            randomInRange(-this.maxSpeed, this.maxSpeed));
         asteroids.push(a);
         asteroids.push(b);
     }
@@ -204,11 +207,14 @@ class MediumAsteroid extends Asteroid {
     }
 
     kill() {
+        timeLastDestroyed = Date.now();
         this.alive = false;
         score += this.points;
-        let rndSpeed = randomInRange(this.maxSpeed);
-        let a = new SmallAsteroid(this.x, this.y, randomInRange(rndSpeed), randomInRange(rndSpeed));
-        let b = new SmallAsteroid(this.x, this.y, randomInRange(-rndSpeed), randomInRange(-rndSpeed));
+        scoreInterval += this.points;
+        let a = new SmallAsteroid(this.x, this.y, randomInRange(-this.maxSpeed, this.maxSpeed),
+                                                  randomInRange(-this.maxSpeed, this.maxSpeed));
+        let b = new SmallAsteroid(this.x, this.y, randomInRange(-this.maxSpeed, this.maxSpeed),
+                                                  randomInRange(-this.maxSpeed, this.maxSpeed));
         asteroids.push(a);
         asteroids.push(b);
     }
@@ -223,8 +229,10 @@ class SmallAsteroid extends Asteroid {
     }
 
     kill() {
+        timeLastDestroyed = Date.now();
         this.alive = false;
         score += this.points;
+        scoreInterval += this.points;
     }
 }
 
@@ -255,10 +263,18 @@ let lives = [];
 for (let i = 0; i < 3; i++) addLife();
 let asteroids = [];
 let bullets = [];
-let maxAsteroids = 5;
+let minAsteroids = 4;
+let maxAsteroids = 6;
 let maxBullets = 4;
 let maxBulletSpeed = 2;
 let score = 0;
+let scoreInterval = 0;
+let highScore = 0;
+
+let startTime = Date.now();
+let introTime = 3000;
+let timeLastDestroyed = Date.now();
+let roundTimeout = 4000;
 
 
 // Start game
@@ -289,23 +305,24 @@ document.addEventListener("keyup", function(event) {
 
 
 function main() {
-
     setTimeout(function onTick() {
         clearCanvas();
         handleInput();
         updateObjects();
         drawText();
 
-        if (asteroids.length === 0) {
-            for (let i = 0; i < maxAsteroids; i++) {
-                spawnAsteroid();
-            }
+        if (asteroids.length === 0 && timeLastDestroyed + roundTimeout < Date.now()) {
+            spawnAsteroids();
+        }
+
+        if (scoreInterval >= 10000) {
+            addLife();
+            scoreInterval %= 10000;
         }
 
         main();
 
     }, GAME_SPEED);
-
 }
 
 
@@ -359,24 +376,69 @@ function drawText() {
     context.strokeStyle = "white";
     context.shadowBlur = BLUR_AMOUNT;
 
+    // Print score
     context.font = "30px hyperspace";
-    context.strokeText(score, 10, 30);
+    context.textAlign = "left";
+    if (score === 0) {
+        context.strokeText("00", 10, 30);
+    } else {
+        context.strokeText(score, 10, 30);
+    }
 
+    // Print player one text if first 3 seconds
+    if (startTime + introTime > Date.now()) {
+        let playerText = "player 1";
+        context.textAlign = "center";
+        context.strokeText(playerText, canvas.width / 2, canvas.height / 4);
+    }
+
+    // Print lives left
     for (let i = 0; i < lives.length; i++) {
         lives[i].draw();
     }
 
+    // Print high-score
     context.font = "20px hyperspace";
-    context.strokeText(0, canvas.width / 2, 20);
+    context.textAlign = "center";
+    if (highScore === 0) {
+        context.strokeText("00", canvas.width / 2, 20);
+    } else {
+        context.strokeText(0, canvas.width / 2, 20);
+    }
 }
 
 
-function spawnAsteroid() {
-    let a = new LargeAsteroid(randomInRange(canvas.width),
-                              randomInRange(canvas.height),
-                              randomInRange(maxBulletSpeed),
-                              randomInRange(maxBulletSpeed));
-    asteroids.push(a);
+function spawnAsteroids() {
+    let numberToSpawn = randomIntInRange(minAsteroids, maxAsteroids);
+    highScore = numberToSpawn;
+    for (let i = 0; i < numberToSpawn; i++) {
+        let side = randomIntInRange(0, 3);
+        if (side === 0) {
+            let a = new LargeAsteroid(0,
+                randomInRange(0, canvas.height),
+                randomInRange(-maxBulletSpeed, maxBulletSpeed),
+                randomInRange(-maxBulletSpeed, maxBulletSpeed));
+            asteroids.push(a);
+        } else if (side === 1) {
+            let a = new LargeAsteroid(randomInRange(0, canvas.width),
+                0,
+                randomInRange(-maxBulletSpeed, maxBulletSpeed),
+                randomInRange(-maxBulletSpeed, maxBulletSpeed));
+            asteroids.push(a);
+        } else if (side === 2) {
+            let a = new LargeAsteroid(canvas.width,
+                randomInRange(0, canvas.height),
+                randomInRange(-maxBulletSpeed, maxBulletSpeed),
+                randomInRange(-maxBulletSpeed, maxBulletSpeed));
+            asteroids.push(a);
+        } else if (side === 3) {
+            let a = new LargeAsteroid(randomInRange(0, canvas.width),
+                canvas.height,
+                randomInRange(-maxBulletSpeed, maxBulletSpeed),
+                randomInRange(-maxBulletSpeed, maxBulletSpeed));
+            asteroids.push(a);
+        }
+    }
 }
 
 
@@ -409,8 +471,15 @@ function handleInput() {
 }
 
 
-function randomInRange(n) {
-    return Math.random() * n;
+function randomInRange(min, max) {
+    return Math.random() * (max - min) + min;
+}
+
+
+function randomIntInRange(min, max) {
+    min = Math.ceil(min);
+    max = Math.floor(max);
+    return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
 
