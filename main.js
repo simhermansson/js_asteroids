@@ -1,7 +1,7 @@
 // Game constants
 const GAME_SPEED = 1000 / 60;
 const CANVAS_BORDER_COLOUR = "gray";
-const CANVAS_BACKGROUND_COLOUR = "rgba(0, 0, 0, 0.6)";
+const CANVAS_BACKGROUND_COLOUR = "rgba(0, 0, 0, 0.5)";
 const BLUR_AMOUNT = 5;
 
 const canvas = document.getElementById("gameCanvas");
@@ -14,16 +14,7 @@ context.font = "30px hyperspace";
 
 
 // Initialize game variables
-let playerX = 150;
-let playerY = 150;
-let playerHeading = 0.0;
 let maxAcceleration = 2;
-
-let lastFiring = Date.now();
-let firingDelay = 100;
-
-let dx = 0;
-let dy = 0;
 
 let leftKey = false;
 let rightKey = false;
@@ -53,6 +44,70 @@ class gameObject {
         context.beginPath();
         context.arc(this.x, this.y, this.radius, 0, 2 * Math.PI);
         context.fill();
+    }
+}
+
+class Ship extends gameObject {
+    constructor(x, y, dx, dy) {
+        super(x, y, dx, dy);
+        this.heading = 0;
+        this.lastFiring = Date.now();
+        this.firingDelay = 100;
+        this.radius = 15;
+    }
+
+    update() {
+        this.x = (this.x + this.dx) % canvas.width;
+        if (this.x < 0) this.x += canvas.width;
+        this.y = (this.y + this.dy) % canvas.height;
+        if (this.y < 0) this.y += canvas.height;
+    }
+
+
+    fire() {
+        let delta = Date.now() - this.lastFiring;
+        if (delta > this.firingDelay) {
+            this.lastFiring = Date.now();
+            let bx = 10 * Math.cos(toRadians(this.heading)) + this.dx;
+            let by = 10 * Math.sin(toRadians(this.heading)) - this.dy;
+            let b = new Bullet(this.x + (2 * bx),this.y - (2 * by), bx, by);
+            bullets.push(b);
+            if (bullets.length > maxBullets) {
+                bullets.shift();
+            }
+        }
+    }
+
+    draw() {
+        context.strokeStyle = "white";
+        context.shadowBlur = BLUR_AMOUNT;
+        context.beginPath();
+
+        let outerLength = Math.sqrt(Math.pow(this.radius, 2) + Math.pow(this.radius, 2));
+
+        let frontX = (this.radius * Math.cos(toRadians(this.heading)));
+        let frontY = (this.radius * Math.sin(toRadians(this.heading)));
+        let upperX = (outerLength * Math.cos(toRadians(35-this.heading)));
+        let upperY = (outerLength * Math.sin(toRadians(35-this.heading)));
+        let lowerX = (outerLength * Math.cos(toRadians(35+this.heading)));
+        let lowerY = (outerLength * Math.sin(toRadians(35+this.heading)));
+        let middleUpperX = ((outerLength-10) * Math.cos(toRadians(10-this.heading)));
+        let middleUpperY = ((outerLength-10) * Math.sin(toRadians(10-this.heading)));
+        let middleLowerX = ((outerLength-10) * Math.cos(toRadians(10+this.heading)));
+        let middleLowerY = ((outerLength-10) * Math.sin(toRadians(10+this.heading)));
+
+        context.moveTo(this.x + frontX, this.y - frontY);
+        context.lineTo(this.x - lowerX, this.y + lowerY);
+        context.lineTo(this.x - middleLowerX, this.y + middleLowerY);
+        context.lineTo(this.x - middleUpperX, this.y - middleUpperY);
+        context.lineTo(this.x - upperX, this.y - upperY);
+        context.lineTo(this.x + frontX, this.y - frontY);
+
+        context.stroke();
+    }
+
+    kill() {
+
     }
 }
 
@@ -196,6 +251,7 @@ class SmallAsteroid extends Asteroid {
 
 
 // Start game
+let player = new Ship(canvas.width / 2, canvas.height / 2, 0, 0);
 main();
 document.addEventListener("keydown", function(event) {
     const LEFT_KEY = 37;
@@ -226,9 +282,7 @@ function main() {
         clearCanvas();
         handleInput();
         updateObjects();
-        drawPlayer();
         drawText();
-        advancePlayer();
 
         if (currentAsteroidsOnScreen === 0) {
             for (let i = 0; i < maxAsteroids; i++) {
@@ -286,40 +340,8 @@ function updateObjects() {
     }
 
     // Update player
-    playerX = (playerX + dx) % canvas.width;
-    if (playerX < 0) playerX += canvas.width;
-    playerY = (playerY + dy) % canvas.height;
-    if (playerY < 0) playerY += canvas.height;
-}
-
-
-function drawPlayer() {
-    context.strokeStyle = "white";
-    context.shadowBlur = BLUR_AMOUNT;
-    context.beginPath();
-
-    let shipRadius = 15;
-    let outerLength = Math.sqrt(Math.pow(shipRadius, 2) + Math.pow(shipRadius, 2));
-
-    let frontX = (shipRadius * Math.cos(toRadians(playerHeading)));
-    let frontY = (shipRadius * Math.sin(toRadians(playerHeading)));
-    let upperX = (outerLength * Math.cos(toRadians(35-playerHeading)));
-    let upperY = (outerLength * Math.sin(toRadians(35-playerHeading)));
-    let lowerX = (outerLength * Math.cos(toRadians(35+playerHeading)));
-    let lowerY = (outerLength * Math.sin(toRadians(35+playerHeading)));
-    let middleUpperX = ((outerLength-10) * Math.cos(toRadians(10-playerHeading)));
-    let middleUpperY = ((outerLength-10) * Math.sin(toRadians(10-playerHeading)));
-    let middleLowerX = ((outerLength-10) * Math.cos(toRadians(10+playerHeading)));
-    let middleLowerY = ((outerLength-10) * Math.sin(toRadians(10+playerHeading)));
-
-    context.moveTo(playerX + frontX, playerY - frontY);
-    context.lineTo(playerX - lowerX, playerY + lowerY);
-    context.lineTo(playerX - middleLowerX, playerY + middleLowerY);
-    context.lineTo(playerX - middleUpperX, playerY - middleUpperY);
-    context.lineTo(playerX - upperX, playerY - upperY);
-    context.lineTo(playerX + frontX, playerY - frontY);
-
-    context.stroke();
+    player.update();
+    player.draw();
 }
 
 
@@ -328,30 +350,6 @@ function drawText() {
     context.shadowBlur = BLUR_AMOUNT;
     // Draw score
     context.strokeText(score, 10, 30);
-}
-
-
-function advancePlayer() {
-    playerX = (playerX + dx) % canvas.width;
-    if (playerX < 0) playerX += canvas.width;
-    playerY = (playerY + dy) % canvas.height;
-    if (playerY < 0) playerY += canvas.height;
-}
-
-
-function fire() {
-    let delta = Date.now() - lastFiring;
-    if (delta > firingDelay) {
-        lastFiring = Date.now();
-        let bulletSpeedX = 10 * Math.cos(toRadians(playerHeading)) + dx;
-        let bulletSpeedY = 10 * Math.sin(toRadians(playerHeading)) - dy;
-        let b = new Bullet(playerX + (2 * bulletSpeedX),
-                        playerY - (2 * bulletSpeedY), bulletSpeedX, bulletSpeedY);
-        bullets.push(b);
-        if (bullets.length > maxBullets) {
-            bullets.shift();
-        }
-    }
 }
 
 
@@ -366,23 +364,25 @@ function spawnAsteroid() {
 
 function handleInput() {
     if (leftKey) {
-        playerHeading = (playerHeading + 5) % 360;
+        player.heading = (player.heading + 5) % 360;
     }
     if (rightKey) {
-        playerHeading = (playerHeading - 5) % 360;
+        player.heading = (player.heading - 5) % 360;
     }
     if (upKey) {
-        dx += 0.1 * Math.cos(toRadians(playerHeading));
-        dy -= 0.1 * Math.sin(toRadians(playerHeading));
+        player.dx += 0.1 * Math.cos(toRadians(player.heading));
+        player.dy -= 0.1 * Math.sin(toRadians(player.heading));
     }
     if (spaceKey) {
-        fire();
+        player.fire();
     }
 }
+
 
 function randomInRange(n) {
     return Math.round(Math.random() * n);
 }
+
 
 function toRadians(angle) {
     return angle * (Math.PI / 180);
