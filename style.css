@@ -1,8 +1,8 @@
 @font-face {
     font-family: hyperspace;
-    src: url(Hyperspace.odt);
+    src: url("Hyperspace.otf") format("opentype");
 }
 
 * {
-    font-family: hyperspace;
+    font-family: hyperspace, monospace;
 }

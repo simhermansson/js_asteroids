@@ -10,16 +10,17 @@ context.shadowColor = "white";
 context.shadowOffsetX = 0;
 context.shadowOffsetY = 0;
 context.lineWidth = 2;
+context.font = "30px hyperspace";
 
 
 // Initialize game variables
 let playerX = 150;
 let playerY = 150;
 let playerHeading = 0.0;
-let maxAcceleration = 3;
+let maxAcceleration = 2;
 
 let lastFiring = Date.now();
-let firingDelay = 300;
+let firingDelay = 100;
 
 let dx = 0;
 let dy = 0;
@@ -30,8 +31,11 @@ let upKey = false;
 let spaceKey = false;
 
 let gameObjects = [];
+let bullets = [];
 let maxAsteroids = 5;
 let currentAsteroidsOnScreen = 0;
+let maxBullets = 4;
+let score = 0;
 
 
 class gameObject {
@@ -55,25 +59,18 @@ class gameObject {
 class Bullet extends gameObject {
     constructor(x, y, dx, dy) {
         super(x, y, dx, dy);
-        this.spawnTime = Date.now();
-        this.maxTimeAlive = 1000;
         this.radius = 3;
     }
 
     update() {
         for (let i = 0; i < gameObjects.length; i++) {
             let o = gameObjects[i];
-            if (o.isAsteroid() && o.contains(this.x, this.y)) {
+            if (o.contains(this.x, this.y)) {
                 gameObjects.splice(i, 1);
                 o.kill();
-                this.maxTimeAlive = 0;
-                return false;
+                return true;
             }
         }
-        return Date.now() - this.spawnTime > this.maxTimeAlive;
-    }
-
-    isAsteroid() {
         return false;
     }
 }
@@ -85,14 +82,11 @@ class Asteroid extends gameObject {
         super(x, y, dx, dy);
         this.shape = randomInRange(3);
         this.points = [];
-    }
-
-    isAsteroid() {
-        return true;
+        this.alive = true;
     }
 
     update() {
-        return false;
+        return !this.alive;
     }
 
     contains(x, y) {
@@ -159,6 +153,8 @@ class LargeAsteroid extends Asteroid {
     }
 
     kill() {
+        this.alive = false;
+        score += this.points;
         let a = new MediumAsteroid(this.x, this.y, randomInRange(maxAcceleration), randomInRange(maxAcceleration));
         let b = new MediumAsteroid(this.x, this.y, randomInRange(maxAcceleration), randomInRange(maxAcceleration));
         gameObjects.push(a);
@@ -172,10 +168,11 @@ class MediumAsteroid extends Asteroid {
     constructor(x, y, dx, dy) {
         super(x, y, dx, dy);
         this.radius = 20;
-        this.points = 40;
+        this.points = 50;
     }
 
     kill() {
+        score += this.points;
         let a = new SmallAsteroid(this.x, this.y, randomInRange(maxAcceleration), randomInRange(maxAcceleration));
         let b = new SmallAsteroid(this.x, this.y, randomInRange(maxAcceleration), randomInRange(maxAcceleration));
         gameObjects.push(a);
@@ -189,11 +186,11 @@ class SmallAsteroid extends Asteroid {
     constructor(x, y, dx, dy) {
         super(x, y, dx, dy);
         this.radius = 10;
-        this.points = 200;
+        this.points = 100;
     }
 
     kill() {
-        currentAsteroidsOnScreen--;
+        score += this.points;
     }
 }
 
@@ -272,6 +269,22 @@ function updateObjects() {
         }
     }
 
+    // Update bullets
+    for (let i = 0; i < bullets.length; i++) {
+        let o = bullets[i];
+        if (o.update()) {
+            bullets.splice(i, 1);
+            break;
+        } else {
+            o.x = (o.x + o.dx) % canvas.width;
+            if (o.x < 0) o.x += canvas.width;
+            o.y = (o.y - o.dy) % canvas.height
+            if (o.y < 0) o.y += canvas.height;
+
+            o.draw();
+        }
+    }
+
     // Update player
     playerX = (playerX + dx) % canvas.width;
     if (playerX < 0) playerX += canvas.width;
@@ -313,9 +326,8 @@ function drawPlayer() {
 function drawText() {
     context.strokeStyle = "white";
     context.shadowBlur = BLUR_AMOUNT;
-    context.font = "30px Arial";
     // Draw score
-    context.strokeText(0, 30, 30);
+    context.strokeText(score, 10, 30);
 }
 
 
@@ -335,7 +347,10 @@ function fire() {
         let bulletSpeedY = 10 * Math.sin(toRadians(playerHeading)) - dy;
         let b = new Bullet(playerX + (2 * bulletSpeedX),
                         playerY - (2 * bulletSpeedY), bulletSpeedX, bulletSpeedY);
-        gameObjects.push(b);
+        bullets.push(b);
+        if (bullets.length > maxBullets) {
+            bullets.shift();
+        }
     }
 }
 
