@@ -178,7 +178,7 @@ class LargeSaucer extends Saucer {
         let degrees = randomInRange(0, 360);
         let bx = 10 * Math.cos(degrees) + this.dx;
         let by = 10 * Math.sin(degrees) - this.dy;
-        let b = new Bullet(this.x + (2 * bx),this.y - (2 * by), bx, by);
+        let b = new Bullet(this.x + (2 * bx),this.y + (2 * by), bx, by);
         b.firedBySaucer = true;
         this.bullets.push(b);
         if (this.bullets.length > this.maxBullets) {
@@ -403,6 +403,7 @@ let rightKey = false;
 let upKey = false;
 let spaceKey = false;
 
+let gameMode = "intro";
 let lives = [];
 for (let i = 0; i < 3; i++) addLife();
 let asteroids = [];
@@ -415,6 +416,7 @@ let maxBulletSpeed = 2;
 let score = 0;
 let scoreInterval = 0;
 let highScore = 0;
+let flashOn = true;
 
 let startTime = Date.now();
 let introTime = 3000;
@@ -441,7 +443,9 @@ document.addEventListener("keydown", function(event) {
     if (event.keyCode === LEFT_KEY) leftKey = true;
     if (event.keyCode === RIGHT_KEY) rightKey = true;
     if (event.keyCode === UP_KEY) upKey = true;
-    if (event.keyCode === SPACE_KEY) spaceKey = true;
+    if (event.keyCode === SPACE_KEY && gameMode === "intro") {
+        startGame();
+    } else if (event.keyCode === SPACE_KEY) spaceKey = true;
     if (event.keyCode === H_KEY) player.hyperjump();
 });
 
@@ -462,35 +466,39 @@ window.addEventListener("resize", configureWindow, false);
 function main() {
     setTimeout(function onTick() {
         clearCanvas();
-        handleInput();
         drawText();
         updateObjects();
 
-        if (asteroids.length === 0 && timeLastDestroyed + roundTimeout < Date.now()) {
-            spawnAsteroids();
-        }
+        if (gameMode === "intro") {
+            score = 0;
+            while (asteroids.length < 10) {
+                spawnAsteroids(1);
+            }
+            if (!saucer.alive) {
+                spawnSaucer();
+            }
+        } else if (gameMode === "game") {
+            handleInput();
 
-        if (scoreInterval >= 10000) {
-            addLife();
-            scoreInterval %= 10000;
-        }
+            if (asteroids.length === 0 && timeLastDestroyed + roundTimeout < Date.now()) {
+                spawnAsteroids();
+            }
 
-        if (!saucer.alive && lastSaucer + saucerInterval < Date.now()) {
-            lastSaucer = Date.now();
-            spawnSaucer();
+            if (scoreInterval >= 10000) {
+                addLife();
+                scoreInterval %= 10000;
+            }
+
+            if (!saucer.alive && lastSaucer + saucerInterval < Date.now()) {
+                lastSaucer = Date.now();
+                spawnSaucer();
+            }
+        } else {
+
         }
 
         main();
-
     }, GAME_SPEED);
-}
-
-function clearCanvas() {
-    context.shadowBlur = 0;
-    context.fillStyle = CANVAS_BACKGROUND_COLOUR;
-    context.strokestyle = CANVAS_BORDER_COLOUR;
-    context.fillRect(0, 0, canvas.width, canvas.height);
-    context.strokeRect(0, 0, canvas.width, canvas.height);
 }
 
 function updateObjects() {
@@ -503,8 +511,29 @@ function updateObjects() {
         saucer.draw();
     }
 
-    player.update();
-    player.draw();
+    if (gameMode == "game") {
+        player.update();
+        player.draw();
+    }
+}
+
+function updateObjectArray(arr) {
+    for (let i = 0; i < arr.length; i++) {
+        let o = arr[i];
+        o.draw();
+        if (o.update()) {
+            arr.splice(i, 1);
+            i = Math.max(i-1, 0);
+        }
+    }
+}
+
+function clearCanvas() {
+    context.shadowBlur = 0;
+    context.fillStyle = CANVAS_BACKGROUND_COLOUR;
+    context.strokestyle = CANVAS_BORDER_COLOUR;
+    context.fillRect(0, 0, canvas.width, canvas.height);
+    context.strokeRect(0, 0, canvas.width, canvas.height);
 }
 
 function drawText() {
@@ -520,18 +549,6 @@ function drawText() {
         context.strokeText(score, 10, 30);
     }
 
-    // Print player one text if first 3 seconds
-    if (startTime + introTime > Date.now()) {
-        let playerText = "player 1";
-        context.textAlign = "center";
-        context.strokeText(playerText, canvas.width / 2, canvas.height / 4);
-    }
-
-    // Print lives left
-    for (let i = 0; i < lives.length; i++) {
-        lives[i].draw();
-    }
-
     // Print high-score
     context.font = "20px hyperspace";
     context.textAlign = "center";
@@ -539,6 +556,51 @@ function drawText() {
         context.strokeText("00", canvas.width / 2, 20);
     } else {
         context.strokeText(0, canvas.width / 2, 20);
+    }
+
+    if (gameMode === "intro") {
+        // Print flashing push start
+        let flashInterval = 500;
+        if (startTime + flashInterval > Date.now()) {
+            if (flashOn) {
+                context.font = "30px hyperspace";
+                context.textAlign = "center";
+                let pushStart = "push start";
+                context.strokeText(pushStart, canvas.width / 2, canvas.height / 4);
+            }
+        } else {
+            startTime = Date.now();
+            flashOn = !flashOn;
+        }
+
+        // Print 1 coin 1 start
+        context.font = "30px hyperspace";
+        context.textAlign = "center";
+        let oneCoin = "1 coin 1 start";
+        context.strokeText(oneCoin, canvas.width / 2, 5 * canvas.height / 6);
+
+        // Print right number, what is this?? coins?
+        context.font = "30px hyperspace";
+        context.textAlign = "right";
+        if (score === 0) {
+            context.strokeText("00", canvas.width - 10, 30);
+        } else {
+            context.strokeText(score, canvas.width - 10, 30);
+        }
+
+    } else if (gameMode === "game") {
+        // Print player one text if first 3 seconds
+        if (startTime + introTime > Date.now()) {
+            context.font = "30px hyperspace";
+            context.textAlign = "center";
+            let playerText = "player 1";
+            context.strokeText(playerText, canvas.width / 2, canvas.height / 4);
+        }
+
+        // Print lives left
+        for (let i = 0; i < lives.length; i++) {
+            lives[i].draw();
+        }
     }
 }
 
@@ -618,17 +680,6 @@ function handleInput() {
     }
 }
 
-function updateObjectArray(arr) {
-    for (let i = 0; i < arr.length; i++) {
-        let o = arr[i];
-        o.draw();
-        if (o.update()) {
-            arr.splice(i, 1);
-            i = Math.max(i-1, 0);
-        }
-    }
-}
-
 function randomInRange(min, max) {
     return Math.random() * (max - min) + min;
 }
@@ -650,4 +701,12 @@ function configureWindow() {
     context.shadowOffsetX = 0;
     context.shadowOffsetY = 0;
     context.lineWidth = 2;
+}
+
+function startGame() {
+    score = 0;
+    asteroids = [];
+    bullets = [];
+    saucer.alive = false;
+    gameMode = "game";
 }
