@@ -4,7 +4,14 @@ class gameObject {
         this.y = y;
         this.dx = dx;
         this.dy = dy;
-        this.radius = 5;
+        this.radius = 2;
+    }
+
+    update() {
+        this.x = (this.x + this.dx) % canvas.width;
+        if (this.x < 0) this.x += canvas.width;
+        this.y = (this.y + this.dy) % canvas.height;
+        if (this.y < 0) this.y += canvas.height;
     }
 
     draw() {
@@ -25,14 +32,6 @@ class Ship extends gameObject {
         this.firingDelay = 100;
         this.radius = 15;
     }
-
-    update() {
-        this.x = (this.x + this.dx) % canvas.width;
-        if (this.x < 0) this.x += canvas.width;
-        this.y = (this.y + this.dy) % canvas.height;
-        if (this.y < 0) this.y += canvas.height;
-    }
-
 
     hyperjump() {
         this.x = randomInRange(0, canvas.width);
@@ -134,10 +133,11 @@ class Saucer extends gameObject {
     }
 
     kill() {
-        score += this.points;
-        scoreInterval += this.points;
         this.alive = false;
         this.bullets = [];
+        score += this.points;
+        scoreInterval += this.points;
+        spawnExplosion(this.x, this.y);
     }
 
     contains(x, y) {
@@ -220,6 +220,35 @@ class SmallSaucer extends Saucer {
         this.bullets.push(b);
         if (this.bullets.length > this.maxBullets) {
             this.bullets.shift();
+        }
+    }
+}
+
+
+class Explosion extends Saucer {
+    constructor(x, y) {
+        super(x, y, 0, 0);
+        this.startTime = Date.now();
+        this.explosionTimer = 1500;
+        this.debrisCount = 10;
+        this.radius = 1;
+        this.debris = [];
+        for (let i = 0; i < this.debrisCount; i++) {
+            let o = new gameObject(this.x, this.y, randomInRange(-0.5, 0.5), randomInRange(-0.5, 0.5));
+            this.debris.push(o);
+        }
+    }
+
+    update() {
+        this.draw();
+        return this.startTime + this.explosionTimer < Date.now();
+    }
+
+    draw() {
+        for (let i = 0; i < this.debris.length; i++) {
+            let o = this.debris[i];
+            o.update();
+            o.draw();
         }
     }
 }
@@ -327,10 +356,12 @@ class LargeAsteroid extends Asteroid {
     }
 
     kill() {
-        timeLastDestroyed = Date.now();
         this.alive = false;
+        timeLastDestroyed = Date.now();
         score += this.points;
         scoreInterval += this.points;
+        spawnExplosion(this.x, this.y);
+
         let a = new MediumAsteroid(this.x, this.y, randomInRange(-this.maxSpeed, this.maxSpeed),
             randomInRange(-this.maxSpeed, this.maxSpeed));
         let b = new MediumAsteroid(this.x, this.y, randomInRange(-this.maxSpeed, this.maxSpeed),
@@ -349,10 +380,12 @@ class MediumAsteroid extends Asteroid {
     }
 
     kill() {
-        timeLastDestroyed = Date.now();
         this.alive = false;
+        timeLastDestroyed = Date.now();
         score += this.points;
         scoreInterval += this.points;
+        spawnExplosion(this.x, this.y);
+
         let a = new SmallAsteroid(this.x, this.y, randomInRange(-this.maxSpeed, this.maxSpeed),
                                                   randomInRange(-this.maxSpeed, this.maxSpeed));
         let b = new SmallAsteroid(this.x, this.y, randomInRange(-this.maxSpeed, this.maxSpeed),
@@ -371,10 +404,11 @@ class SmallAsteroid extends Asteroid {
     }
 
     kill() {
-        timeLastDestroyed = Date.now();
         this.alive = false;
+        timeLastDestroyed = Date.now();
         score += this.points;
         scoreInterval += this.points;
+        spawnExplosion(this.x, this.y);
     }
 }
 
@@ -405,6 +439,7 @@ let lives = [];
 for (let i = 0; i < 3; i++) addLife();
 let asteroids = [];
 let bullets = [];
+let explosions = [];
 let minAsteroids = 4;
 let maxAsteroids = 6;
 let maxBullets = 4;
@@ -517,6 +552,14 @@ function updateObjects() {
         }
     }
 
+    // Update explosions
+    for (let i = 0; i < explosions.length; i++) {
+        if (explosions[i].update()) {
+            explosions.splice(i, 1);
+            i = Math.max(i-1, 0);
+        }
+    }
+
     if (saucer.alive) {
         saucer.update();
         saucer.draw();
@@ -561,6 +604,12 @@ function drawText() {
     } else {
         context.strokeText(0, canvas.width / 2, 20);
     }
+}
+
+
+function spawnExplosion(x, y) {
+    let e = new Explosion(x, y);
+    explosions.push(e);
 }
 
 
