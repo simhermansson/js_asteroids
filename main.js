@@ -88,10 +88,148 @@ class Ship extends gameObject {
 }
 
 
+class Saucer extends gameObject {
+    constructor(x, y, dx, dy) {
+        super(x, y, dx, dy);
+        this.maxSpeed = 1;
+        this.alive = false;
+        this.lastUpdate = Date.now();
+        this.updateInterval = 2000;
+        this.lastFiring = Date.now();
+        this.firingInterval = 3000;
+        this.bullets = [];
+        this.maxBullets = 4;
+    }
+
+    update() {
+        if (this.lastUpdate + this.updateInterval < Date.now()) {
+            this.lastUpdate = Date.now();
+            this.dy = randomIntInRange(-this.maxSpeed, this.maxSpeed);
+        }
+
+        if (this.lastFiring + this.firingInterval < Date.now()) {
+            this.lastFiring = Date.now();
+            this.fire();
+        }
+
+        // Update bullets
+        for (let i = 0; i < this.bullets.length; i++) {
+            let o = this.bullets[i];
+            if (o.update()) {
+                this.bullets.splice(i, 1);
+                i = Math.max(i-1, 0);
+            } else {
+                o.x = (o.x + o.dx) % canvas.width;
+                if (o.x < 0) o.x += canvas.width;
+                o.y = (o.y - o.dy) % canvas.height
+                if (o.y < 0) o.y += canvas.height;
+                o.draw();
+            }
+        }
+
+        this.x = (this.x + this.dx) % canvas.width;
+        if (this.x < 0) this.x += canvas.width;
+        this.y = (this.y + this.dy) % canvas.height;
+        if (this.y < 0) this.y += canvas.height;
+    }
+
+    kill() {
+        score += this.points;
+        scoreInterval += this.points;
+        this.alive = false;
+        this.bullets = [];
+    }
+
+    contains(x, y) {
+        return Math.abs(this.x - x) <= this.horizontalRadius &&
+               Math.abs(this.y - y) <= this.verticalRadius;
+    }
+
+    draw() {
+        context.strokeStyle = "white";
+        context.shadowBlur = BLUR_AMOUNT;
+        context.beginPath();
+
+        context.moveTo(this.x - 2 * this.horizontalRadius / 5, this.y - this.verticalRadius / 2);
+        context.lineTo(this.x + 2 * this.horizontalRadius / 5, this.y - this.verticalRadius / 2);
+        context.moveTo(this.x - this.horizontalRadius / 5, this.y - this.verticalRadius);
+        context.lineTo(this.x + this.horizontalRadius / 5, this.y - this.verticalRadius);
+        context.moveTo(this.x - 2 * this.horizontalRadius / 5, this.y - this.verticalRadius / 2);
+        context.lineTo(this.x - this.horizontalRadius / 5, this.y - this.verticalRadius);
+        context.moveTo(this.x + 2 * this.horizontalRadius / 5, this.y - this.verticalRadius / 2);
+        context.lineTo(this.x + this.horizontalRadius / 5, this.y - this.verticalRadius);
+        context.moveTo(this.x - this.horizontalRadius, this.y);
+        context.lineTo(this.x + this.horizontalRadius, this.y);
+        context.moveTo(this.x - this.horizontalRadius, this.y);
+        context.lineTo(this.x - 2 * this.horizontalRadius / 5, this.y - this.verticalRadius / 2);
+        context.moveTo(this.x + this.horizontalRadius, this.y);
+        context.lineTo(this.x + 2 * this.horizontalRadius / 5, this.y - this.verticalRadius / 2);
+        context.moveTo(this.x - this.horizontalRadius + this.horizontalRadius / 5, this.y + this.verticalRadius / 2);
+        context.lineTo(this.x + this.horizontalRadius - this.horizontalRadius / 5, this.y + this.verticalRadius / 2);
+        context.moveTo(this.x - this.horizontalRadius + this.horizontalRadius / 5, this.y + this.verticalRadius / 2);
+        context.lineTo(this.x - this.horizontalRadius, this.y);
+        context.moveTo(this.x + this.horizontalRadius - this.horizontalRadius / 5, this.y + this.verticalRadius / 2);
+        context.lineTo(this.x + this.horizontalRadius, this.y);
+
+        context.stroke();
+    }
+}
+
+
+class LargeSaucer extends Saucer {
+    constructor(x, y, dx, dy) {
+        super(x, y, dx, dy);
+        this.points = 200;
+        this.accuracy = 0.3;
+        this.verticalRadius = 15;
+        this.horizontalRadius = 30;
+    }
+
+    fire() {
+        let degrees = randomInRange(0, 360);
+        let bx = 10 * Math.cos(degrees) + this.dx;
+        let by = 10 * Math.sin(degrees) - this.dy;
+        let b = new Bullet(this.x + (2 * bx),this.y - (2 * by), bx, by);
+        b.firedBySaucer = true;
+        this.bullets.push(b);
+        if (this.bullets.length > this.maxBullets) {
+            this.bullets.shift();
+        }
+    }
+}
+
+
+class SmallSaucer extends Saucer {
+    constructor(x, y, dx, dy) {
+        super(x, y, dx, dy);
+        this.points = 1000;
+        this.verticalRadius = 10;
+        this.horizontalRadius = 20;
+    }
+
+    fire() {
+        let accuracy = randomInRange(0.9, 1.1);
+        if (score > 70000) {
+            this.accuracy = 1;
+        }
+        let degrees = Math.atan2(this.y - player.y, player.x - this.x) * accuracy;
+        let bx = 10 * Math.cos(degrees) + this.dx;
+        let by = 10 * Math.sin(degrees) - this.dy;
+        let b = new Bullet(this.x + (2 * bx),this.y - (2 * by), bx, by);
+        b.firedBySaucer = true;
+        this.bullets.push(b);
+        if (this.bullets.length > this.maxBullets) {
+            this.bullets.shift();
+        }
+    }
+}
+
+
 class Bullet extends gameObject {
     constructor(x, y, dx, dy) {
         super(x, y, dx, dy);
         this.radius = 3;
+        this.firedBySaucer = false;
     }
 
     update() {
@@ -102,6 +240,10 @@ class Bullet extends gameObject {
                 return true;
             }
         }
+        if (saucer.alive && !this.firedBySaucer && saucer.contains(this.x, this.y)) {
+            saucer.kill();
+            return true;
+        }
         return false;
     }
 }
@@ -110,7 +252,7 @@ class Bullet extends gameObject {
 class Asteroid extends gameObject {
     constructor(x, y, dx, dy) {
         super(x, y, dx, dy);
-        this.shape = Math.round(0, randomInRange(2));
+        this.shape = randomIntInRange(0, 2);
         this.points = [];
         this.alive = true;
         this.exploded = false;
@@ -275,6 +417,10 @@ let startTime = Date.now();
 let introTime = 3000;
 let timeLastDestroyed = Date.now();
 let roundTimeout = 4000;
+let lastSaucer = Date.now();
+let saucerInterval = 30000;
+let saucer = new SmallSaucer(0, 0, 0, 0);
+saucer.alive = false;
 
 
 // Start game
@@ -308,8 +454,8 @@ function main() {
     setTimeout(function onTick() {
         clearCanvas();
         handleInput();
-        updateObjects();
         drawText();
+        updateObjects();
 
         if (asteroids.length === 0 && timeLastDestroyed + roundTimeout < Date.now()) {
             spawnAsteroids();
@@ -318,6 +464,11 @@ function main() {
         if (scoreInterval >= 10000) {
             addLife();
             scoreInterval %= 10000;
+        }
+
+        if (!saucer.alive && lastSaucer + saucerInterval < Date.now()) {
+            lastSaucer = Date.now();
+            spawnSaucer();
         }
 
         main();
@@ -366,6 +517,11 @@ function updateObjects() {
         }
     }
 
+    if (saucer.alive) {
+        saucer.update();
+        saucer.draw();
+    }
+
     // Update player
     player.update();
     player.draw();
@@ -404,6 +560,17 @@ function drawText() {
         context.strokeText("00", canvas.width / 2, 20);
     } else {
         context.strokeText(0, canvas.width / 2, 20);
+    }
+}
+
+
+function spawnSaucer() {
+    if (score >= 40000 || randomIntInRange(0, 1) === 0) {
+        saucer = new SmallSaucer(0, randomIntInRange(0, canvas.height), -saucer.maxSpeed, saucer.maxSpeed);
+        saucer.alive = true;
+    } else {
+        saucer = new LargeSaucer(0, randomIntInRange(0, canvas.height), -saucer.maxSpeed, saucer.maxSpeed);
+        saucer.alive = true;
     }
 }
 
