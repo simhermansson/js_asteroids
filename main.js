@@ -7,6 +7,11 @@ class gameObject {
         this.radius = 2;
     }
 
+    contains(x, y) {
+        return Math.abs(this.x - x) <= this.radius &&
+            Math.abs(this.y - y) <= this.radius;
+    }
+
     update() {
         this.x = (this.x + this.dx) % canvas.width;
         if (this.x < 0) this.x += canvas.width;
@@ -23,7 +28,6 @@ class gameObject {
     }
 }
 
-
 class Ship extends gameObject {
     constructor(x, y, dx, dy) {
         super(x, y, dx, dy);
@@ -34,18 +38,18 @@ class Ship extends gameObject {
     }
 
     hyperjump() {
+        spawnExplosion(this.x, this.y);
         this.x = randomInRange(0, canvas.width);
         this.y = randomInRange(0, canvas.height);
     }
-
 
     fire() {
         let delta = Date.now() - this.lastFiring;
         if (delta > this.firingDelay) {
             this.lastFiring = Date.now();
             let bx = 10 * Math.cos(toRadians(this.heading)) + this.dx;
-            let by = 10 * Math.sin(toRadians(this.heading)) - this.dy;
-            let b = new Bullet(this.x + (2 * bx),this.y - (2 * by), bx, by);
+            let by = -10 * Math.sin(toRadians(this.heading)) + this.dy;
+            let b = new Bullet(this.x + (2 * bx),this.y + (2 * by), bx, by);
             bullets.push(b);
             if (bullets.length > maxBullets) {
                 bullets.shift();
@@ -86,7 +90,6 @@ class Ship extends gameObject {
     }
 }
 
-
 class Saucer extends gameObject {
     constructor(x, y, dx, dy) {
         super(x, y, dx, dy);
@@ -101,35 +104,22 @@ class Saucer extends gameObject {
     }
 
     update() {
+        // Update position
+        gameObject.prototype.update.call(this);
+
+        // Update dy if interval is up
         if (this.lastUpdate + this.updateInterval < Date.now()) {
             this.lastUpdate = Date.now();
             this.dy = randomIntInRange(-this.maxSpeed, this.maxSpeed);
         }
 
+        // Fire if interval is up
         if (this.lastFiring + this.firingInterval < Date.now()) {
             this.lastFiring = Date.now();
             this.fire();
         }
 
-        // Update bullets
-        for (let i = 0; i < this.bullets.length; i++) {
-            let o = this.bullets[i];
-            if (o.update()) {
-                this.bullets.splice(i, 1);
-                i = Math.max(i-1, 0);
-            } else {
-                o.x = (o.x + o.dx) % canvas.width;
-                if (o.x < 0) o.x += canvas.width;
-                o.y = (o.y - o.dy) % canvas.height
-                if (o.y < 0) o.y += canvas.height;
-                o.draw();
-            }
-        }
-
-        this.x = (this.x + this.dx) % canvas.width;
-        if (this.x < 0) this.x += canvas.width;
-        this.y = (this.y + this.dy) % canvas.height;
-        if (this.y < 0) this.y += canvas.height;
+        updateObjectArray(this.bullets);
     }
 
     kill() {
@@ -175,7 +165,6 @@ class Saucer extends gameObject {
     }
 }
 
-
 class LargeSaucer extends Saucer {
     constructor(x, y, dx, dy) {
         super(x, y, dx, dy);
@@ -198,7 +187,6 @@ class LargeSaucer extends Saucer {
     }
 }
 
-
 class SmallSaucer extends Saucer {
     constructor(x, y, dx, dy) {
         super(x, y, dx, dy);
@@ -212,10 +200,10 @@ class SmallSaucer extends Saucer {
         if (score > 70000) {
             this.accuracy = 1;
         }
-        let degrees = Math.atan2(this.y - player.y, player.x - this.x) * accuracy;
-        let bx = 10 * Math.cos(degrees) + this.dx;
-        let by = 10 * Math.sin(degrees) - this.dy;
-        let b = new Bullet(this.x + (2 * bx),this.y - (2 * by), bx, by);
+        let radians = Math.atan2(this.y - player.y, player.x - this.x) * accuracy;
+        let bx = 10 * Math.cos(radians) + this.dx;
+        let by = -10 * Math.sin(radians) + this.dy;
+        let b = new Bullet(this.x + (2 * bx),this.y + (2 * by), bx, by);
         b.firedBySaucer = true;
         this.bullets.push(b);
         if (this.bullets.length > this.maxBullets) {
@@ -223,7 +211,6 @@ class SmallSaucer extends Saucer {
         }
     }
 }
-
 
 class Explosion extends Saucer {
     constructor(x, y) {
@@ -240,19 +227,13 @@ class Explosion extends Saucer {
     }
 
     update() {
-        this.draw();
         return this.startTime + this.explosionTimer < Date.now();
     }
 
     draw() {
-        for (let i = 0; i < this.debris.length; i++) {
-            let o = this.debris[i];
-            o.update();
-            o.draw();
-        }
+        updateObjectArray(this.debris);
     }
 }
-
 
 class Bullet extends gameObject {
     constructor(x, y, dx, dy) {
@@ -262,6 +243,7 @@ class Bullet extends gameObject {
     }
 
     update() {
+        gameObject.prototype.update.call(this);
         for (let i = 0; i < asteroids.length; i++) {
             let o = asteroids[i];
             if (o.contains(this.x, this.y)) {
@@ -277,7 +259,6 @@ class Bullet extends gameObject {
     }
 }
 
-
 class Asteroid extends gameObject {
     constructor(x, y, dx, dy) {
         super(x, y, dx, dy);
@@ -289,12 +270,8 @@ class Asteroid extends gameObject {
     }
 
     update() {
+        gameObject.prototype.update.call(this);
         return !this.alive;
-    }
-
-    contains(x, y) {
-        return Math.abs(this.x - x) <= this.radius &&
-               Math.abs(this.y - y) <= this.radius;
     }
 
     draw() {
@@ -347,7 +324,6 @@ class Asteroid extends gameObject {
     }
 }
 
-
 class LargeAsteroid extends Asteroid {
     constructor(x, y, dx, dy) {
         super(x, y, dx, dy);
@@ -371,7 +347,6 @@ class LargeAsteroid extends Asteroid {
     }
 }
 
-
 class MediumAsteroid extends Asteroid {
     constructor(x, y, dx, dy) {
         super(x, y, dx, dy);
@@ -394,7 +369,6 @@ class MediumAsteroid extends Asteroid {
         asteroids.push(b);
     }
 }
-
 
 class SmallAsteroid extends Asteroid {
     constructor(x, y, dx, dy) {
@@ -425,7 +399,6 @@ context.shadowColor = "white";
 context.shadowOffsetX = 0;
 context.shadowOffsetY = 0;
 context.lineWidth = 2;
-
 
 // Initialize game variables
 let leftKey = false;
@@ -466,6 +439,7 @@ document.addEventListener("keydown", function(event) {
     const UP_KEY = 38;
     const SPACE_KEY = 32;
     const H_KEY = 72;
+
     if (event.keyCode === LEFT_KEY) leftKey = true;
     if (event.keyCode === RIGHT_KEY) rightKey = true;
     if (event.keyCode === UP_KEY) upKey = true;
@@ -478,12 +452,12 @@ document.addEventListener("keyup", function(event) {
     const RIGHT_KEY = 39;
     const UP_KEY = 38;
     const SPACE_KEY = 32;
+
     if (event.keyCode === LEFT_KEY) leftKey = false;
     if (event.keyCode === RIGHT_KEY) rightKey = false;
     if (event.keyCode === UP_KEY) upKey = false;
     if (event.keyCode === SPACE_KEY) spaceKey = false;
 });
-
 
 function main() {
     setTimeout(function onTick() {
@@ -511,7 +485,6 @@ function main() {
     }, GAME_SPEED);
 }
 
-
 function clearCanvas() {
     context.shadowBlur = 0;
     context.fillStyle = CANVAS_BACKGROUND_COLOUR;
@@ -520,56 +493,19 @@ function clearCanvas() {
     context.strokeRect(0, 0, canvas.width, canvas.height);
 }
 
-
 function updateObjects() {
-    // Update asteroids
-    for (let i = 0; i < asteroids.length; i++) {
-        let o = asteroids[i];
-        if (o.update()) {
-            asteroids.splice(i, 1);
-            i = Math.max(i-1, 0);
-        } else {
-            o.x = (o.x + o.dx) % canvas.width;
-            if (o.x < 0) o.x += canvas.width;
-            o.y = (o.y - o.dy) % canvas.height
-            if (o.y < 0) o.y += canvas.height;
-            o.draw();
-        }
-    }
-
-    // Update bullets
-    for (let i = 0; i < bullets.length; i++) {
-        let o = bullets[i];
-        if (o.update()) {
-            bullets.splice(i, 1);
-            i = Math.max(i-1, 0);
-        } else {
-            o.x = (o.x + o.dx) % canvas.width;
-            if (o.x < 0) o.x += canvas.width;
-            o.y = (o.y - o.dy) % canvas.height
-            if (o.y < 0) o.y += canvas.height;
-            o.draw();
-        }
-    }
-
-    // Update explosions
-    for (let i = 0; i < explosions.length; i++) {
-        if (explosions[i].update()) {
-            explosions.splice(i, 1);
-            i = Math.max(i-1, 0);
-        }
-    }
+    updateObjectArray(explosions);
+    updateObjectArray(asteroids)
+    updateObjectArray(bullets);
 
     if (saucer.alive) {
         saucer.update();
         saucer.draw();
     }
 
-    // Update player
     player.update();
     player.draw();
 }
-
 
 function drawText() {
     context.strokeStyle = "white";
@@ -606,23 +542,22 @@ function drawText() {
     }
 }
 
-
 function spawnExplosion(x, y) {
     let e = new Explosion(x, y);
     explosions.push(e);
 }
 
-
 function spawnSaucer() {
     if (score >= 40000 || randomIntInRange(0, 1) === 0) {
-        saucer = new SmallSaucer(0, randomIntInRange(0, canvas.height), -saucer.maxSpeed, saucer.maxSpeed);
+        saucer = new SmallSaucer(0, randomIntInRange(0, canvas.height),
+                                 -saucer.maxSpeed, saucer.maxSpeed);
         saucer.alive = true;
     } else {
-        saucer = new LargeSaucer(0, randomIntInRange(0, canvas.height), -saucer.maxSpeed, saucer.maxSpeed);
+        saucer = new LargeSaucer(0, randomIntInRange(0, canvas.height),
+                                 -saucer.maxSpeed, saucer.maxSpeed);
         saucer.alive = true;
     }
 }
-
 
 function spawnAsteroids() {
     let numberToSpawn = randomIntInRange(minAsteroids, maxAsteroids);
@@ -657,18 +592,15 @@ function spawnAsteroids() {
     }
 }
 
-
 function addLife() {
     let s = new Ship((1 + lives.length) * 30, 60, 0, 0);
     s.heading = 90;
     lives.push(s);
 }
 
-
 function removeLife() {
     lives.pop();
 }
-
 
 function handleInput() {
     if (leftKey) {
@@ -686,18 +618,26 @@ function handleInput() {
     }
 }
 
+function updateObjectArray(arr) {
+    for (let i = 0; i < arr.length; i++) {
+        let o = arr[i];
+        o.draw();
+        if (o.update()) {
+            arr.splice(i, 1);
+            i = Math.max(i-1, 0);
+        }
+    }
+}
 
 function randomInRange(min, max) {
     return Math.random() * (max - min) + min;
 }
-
 
 function randomIntInRange(min, max) {
     min = Math.ceil(min);
     max = Math.floor(max);
     return Math.floor(Math.random() * (max - min + 1)) + min;
 }
-
 
 function toRadians(angle) {
     return angle * (Math.PI / 180);
