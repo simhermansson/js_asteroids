@@ -395,6 +395,8 @@ const BLUR_AMOUNT = 5;
 
 const canvas = document.getElementById("gameCanvas");
 const context = canvas.getContext("2d");
+context.canvas.width = window.innerWidth;
+context.canvas.height = window.innerHeight;
 context.shadowColor = "white";
 context.shadowOffsetX = 0;
 context.shadowOffsetY = 0;
@@ -458,6 +460,11 @@ document.addEventListener("keyup", function(event) {
     if (event.keyCode === UP_KEY) upKey = false;
     if (event.keyCode === SPACE_KEY) spaceKey = false;
 });
+
+window.addEventListener("resize", function() {
+    context.canvas.width = window.innerWidth;
+    context.canvas.height = window.innerHeight;
+}, false);
 
 function main() {
     setTimeout(function onTick() {
