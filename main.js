@@ -395,20 +395,13 @@ const BLUR_AMOUNT = 5;
 
 const canvas = document.getElementById("gameCanvas");
 const context = canvas.getContext("2d");
-context.canvas.width = window.innerWidth;
-context.canvas.height = window.innerHeight;
-context.shadowColor = "white";
-context.shadowOffsetX = 0;
-context.shadowOffsetY = 0;
-context.lineWidth = 2;
+configureWindow();
 
 // Initialize game variables
 let leftKey = false;
 let rightKey = false;
 let upKey = false;
 let spaceKey = false;
-
-let player = new Ship(canvas.width / 2, canvas.height / 2, 0, 0);
 
 let lives = [];
 for (let i = 0; i < 3; i++) addLife();
@@ -429,12 +422,15 @@ let timeLastDestroyed = Date.now();
 let roundTimeout = 4000;
 let lastSaucer = Date.now();
 let saucerInterval = 30000;
+
+let player = new Ship(canvas.width / 2, canvas.height / 2, 0, 0);
 let saucer = new SmallSaucer(0, 0, 0, 0);
 saucer.alive = false;
 
 
 // Start game
 main();
+
 document.addEventListener("keydown", function(event) {
     const LEFT_KEY = 37;
     const RIGHT_KEY = 39;
@@ -461,10 +457,7 @@ document.addEventListener("keyup", function(event) {
     if (event.keyCode === SPACE_KEY) spaceKey = false;
 });
 
-window.addEventListener("resize", function() {
-    context.canvas.width = window.innerWidth;
-    context.canvas.height = window.innerHeight;
-}, false);
+window.addEventListener("resize", configureWindow, false);
 
 function main() {
     setTimeout(function onTick() {
@@ -648,4 +641,13 @@ function randomIntInRange(min, max) {
 
 function toRadians(angle) {
     return angle * (Math.PI / 180);
+}
+
+function configureWindow() {
+    context.canvas.width = window.innerWidth;
+    context.canvas.height = window.innerHeight;
+    context.shadowColor = "white";
+    context.shadowOffsetX = 0;
+    context.shadowOffsetY = 0;
+    context.lineWidth = 2;
 }
