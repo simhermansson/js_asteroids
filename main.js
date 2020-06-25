@@ -35,6 +35,7 @@ class Ship extends gameObject {
         this.lastFiring = Date.now();
         this.firingDelay = 100;
         this.radius = 15;
+        this.alive = false;
     }
 
     hyperjump() {
@@ -86,7 +87,12 @@ class Ship extends gameObject {
     }
 
     kill() {
-        removeLife();
+        this.alive = false;
+        bullets = [];
+        spawnExplosion(this.x, this.y);
+        if (removeLife()) {
+            setTimeout(spawnPlayer, 3000);
+        }
     }
 }
 
@@ -117,6 +123,10 @@ class Saucer extends gameObject {
         if (this.lastFiring + this.firingInterval < Date.now()) {
             this.lastFiring = Date.now();
             this.fire();
+        }
+
+        if (player.alive && player.contains(this.x, this.y)) {
+            player.kill();
         }
 
         updateObjectArray(this.bullets);
@@ -255,6 +265,10 @@ class Bullet extends gameObject {
             saucer.kill();
             return true;
         }
+        if (player.alive && player.contains(this.x, this.y)) {
+            player.kill();
+            return true;
+        }
         return false;
     }
 }
@@ -271,6 +285,9 @@ class Asteroid extends gameObject {
 
     update() {
         gameObject.prototype.update.call(this);
+        if (player.alive && this.contains(player.x, player.y)) {
+            player.kill();
+        }
         return !this.alive;
     }
 
@@ -420,14 +437,17 @@ let flashOn = true;
 
 let startTime = Date.now();
 let introTime = 3000;
+let endTime = null;
 let timeLastDestroyed = Date.now();
 let roundTimeout = 4000;
 let lastSaucer = Date.now();
 let saucerInterval = 30000;
 
-let player = new Ship(canvas.width / 2, canvas.height / 2, 0, 0);
 let saucer = new SmallSaucer(0, 0, 0, 0);
 saucer.alive = false;
+let player = null;
+spawnPlayer();
+player.alive = false;
 
 
 // Start game
@@ -446,7 +466,7 @@ document.addEventListener("keydown", function(event) {
     if (event.keyCode === SPACE_KEY && gameMode === "intro") {
         startGame();
     } else if (event.keyCode === SPACE_KEY) spaceKey = true;
-    if (event.keyCode === H_KEY) player.hyperjump();
+    if (player.alive && event.keyCode === H_KEY) player.hyperjump();
 });
 
 document.addEventListener("keyup", function(event) {
@@ -466,10 +486,10 @@ window.addEventListener("resize", configureWindow, false);
 function main() {
     setTimeout(function onTick() {
         clearCanvas();
-        drawText();
         updateObjects();
 
         if (gameMode === "intro") {
+            drawIntroText();
             score = 0;
             while (asteroids.length < 10) {
                 spawnAsteroids(1);
@@ -478,6 +498,7 @@ function main() {
                 spawnSaucer();
             }
         } else if (gameMode === "game") {
+            drawGameText();
             handleInput();
 
             if (asteroids.length === 0 && timeLastDestroyed + roundTimeout < Date.now()) {
@@ -493,8 +514,8 @@ function main() {
                 lastSaucer = Date.now();
                 spawnSaucer();
             }
-        } else {
-
+        } else if (gameMode === "end") {
+            drawEndText();
         }
 
         main();
@@ -511,7 +532,7 @@ function updateObjects() {
         saucer.draw();
     }
 
-    if (gameMode == "game") {
+    if (gameMode === "game" && player.alive) {
         player.update();
         player.draw();
     }
@@ -528,85 +549,28 @@ function updateObjectArray(arr) {
     }
 }
 
-function clearCanvas() {
-    context.shadowBlur = 0;
-    context.fillStyle = CANVAS_BACKGROUND_COLOUR;
-    context.strokestyle = CANVAS_BORDER_COLOUR;
-    context.fillRect(0, 0, canvas.width, canvas.height);
-    context.strokeRect(0, 0, canvas.width, canvas.height);
-}
-
-function drawText() {
-    context.strokeStyle = "white";
-    context.shadowBlur = BLUR_AMOUNT;
-
-    // Print score
-    context.font = "30px hyperspace";
-    context.textAlign = "left";
-    if (score === 0) {
-        context.strokeText("00", 10, 30);
-    } else {
-        context.strokeText(score, 10, 30);
+function spawnPlayer() {
+    let clear = true;
+    for (let i = 0; i < asteroids.length; i++) {
+        if (asteroids[i].contains(canvas.width / 2, canvas.height / 2)) {
+            clear = false;
+            break;
+        }
     }
-
-    // Print high-score
-    context.font = "20px hyperspace";
-    context.textAlign = "center";
-    if (highScore === 0) {
-        context.strokeText("00", canvas.width / 2, 20);
-    } else {
-        context.strokeText(0, canvas.width / 2, 20);
+    if (saucer.alive && saucer.contains(canvas.width / 2, canvas.height / 2)) {
+        clear = false;
     }
-
-    if (gameMode === "intro") {
-        // Print flashing push start
-        let flashInterval = 500;
-        if (startTime + flashInterval > Date.now()) {
-            if (flashOn) {
-                context.font = "30px hyperspace";
-                context.textAlign = "center";
-                let pushStart = "push start";
-                context.strokeText(pushStart, canvas.width / 2, canvas.height / 4);
-            }
-        } else {
-            startTime = Date.now();
-            flashOn = !flashOn;
-        }
-
-        // Print 1 coin 1 start
-        context.font = "30px hyperspace";
-        context.textAlign = "center";
-        let oneCoin = "1 coin 1 start";
-        context.strokeText(oneCoin, canvas.width / 2, 5 * canvas.height / 6);
-
-        // Print right number, what is this?? coins?
-        context.font = "30px hyperspace";
-        context.textAlign = "right";
-        if (score === 0) {
-            context.strokeText("00", canvas.width - 10, 30);
-        } else {
-            context.strokeText(score, canvas.width - 10, 30);
-        }
-
-    } else if (gameMode === "game") {
-        // Print player one text if first 3 seconds
-        if (startTime + introTime > Date.now()) {
-            context.font = "30px hyperspace";
-            context.textAlign = "center";
-            let playerText = "player 1";
-            context.strokeText(playerText, canvas.width / 2, canvas.height / 4);
-        }
-
-        // Print lives left
-        for (let i = 0; i < lives.length; i++) {
-            lives[i].draw();
-        }
+    if (clear) {
+        player = new Ship(canvas.width / 2, canvas.height / 2, 0, 0);
+        player.alive = true;
+    } else {
+        setTimeout(spawnPlayer, 1000);
     }
 }
 
 function spawnExplosion(x, y) {
-    let e = new Explosion(x, y);
-    explosions.push(e);
+    let explosion = new Explosion(x, y);
+    explosions.push(explosion);
 }
 
 function spawnSaucer() {
@@ -623,7 +587,6 @@ function spawnSaucer() {
 
 function spawnAsteroids() {
     let numberToSpawn = randomIntInRange(minAsteroids, maxAsteroids);
-    highScore = numberToSpawn;
     for (let i = 0; i < numberToSpawn; i++) {
         let side = randomIntInRange(0, 3);
         if (side === 0) {
@@ -654,6 +617,20 @@ function spawnAsteroids() {
     }
 }
 
+function startGame() {
+    score = 0;
+    asteroids = [];
+    bullets = [];
+    saucer.alive = false;
+    gameMode = "game";
+    spawnPlayer();
+}
+
+function endGame() {
+    gameMode = "end";
+    endTime = Date.now();
+}
+
 function addLife() {
     let s = new Ship((1 + lives.length) * 30, 60, 0, 0);
     s.heading = 90;
@@ -662,38 +639,189 @@ function addLife() {
 
 function removeLife() {
     lives.pop();
+    if (lives.length === 0) {
+        endGame();
+        return false;
+    }
+    return true;
 }
 
 function handleInput() {
-    if (leftKey) {
-        player.heading = (player.heading + 5) % 360;
-    }
-    if (rightKey) {
-        player.heading = (player.heading - 5) % 360;
-    }
-    if (upKey) {
-        player.dx += 0.1 * Math.cos(toRadians(player.heading));
-        player.dy -= 0.1 * Math.sin(toRadians(player.heading));
-    }
-    if (spaceKey) {
-        player.fire();
+    if (player.alive) {
+        if (leftKey) {
+            player.heading = (player.heading + 5) % 360;
+        }
+        if (rightKey) {
+            player.heading = (player.heading - 5) % 360;
+        }
+        if (upKey) {
+            player.dx += 0.1 * Math.cos(toRadians(player.heading));
+            player.dy -= 0.1 * Math.sin(toRadians(player.heading));
+        }
+        if (spaceKey) {
+            player.fire();
+        }
     }
 }
 
+function clearCanvas() {
+    context.shadowBlur = 0;
+    context.fillStyle = CANVAS_BACKGROUND_COLOUR;
+    context.strokestyle = CANVAS_BORDER_COLOUR;
+    context.fillRect(0, 0, canvas.width, canvas.height);
+    context.strokeRect(0, 0, canvas.width, canvas.height);
+}
+
+function drawIntroText() {
+    context.strokeStyle = "white";
+    context.shadowBlur = BLUR_AMOUNT;
+
+    drawScores();
+    drawCoins();
+
+    // Print flashing push start
+    let flashInterval = 500;
+    if (startTime + flashInterval > Date.now()) {
+        if (flashOn) {
+            context.font = "30px hyperspace";
+            context.textAlign = "center";
+            let pushStart = "push start";
+            context.strokeText(pushStart, canvas.width / 2, canvas.height / 4);
+        }
+    } else {
+        startTime = Date.now();
+        flashOn = !flashOn;
+    }
+
+    // Print 1 coin 1 start
+    context.font = "30px hyperspace";
+    context.textAlign = "center";
+    let oneCoin = "1 coin 1 start";
+    context.strokeText(oneCoin, canvas.width / 2, 5 * canvas.height / 6);
+}
+
+function drawGameText() {
+    context.strokeStyle = "white";
+    context.shadowBlur = BLUR_AMOUNT;
+
+    drawScores();
+
+    // Print player one text if first 3 seconds
+    if (startTime + introTime > Date.now()) {
+        context.font = "30px hyperspace";
+        context.textAlign = "center";
+        let playerText = "player 1";
+        context.strokeText(playerText, canvas.width / 2, canvas.height / 4);
+    }
+
+    // Print lives left
+    for (let i = 0; i < lives.length; i++) {
+        lives[i].draw();
+    }
+}
+
+function drawEndText() {
+    context.strokeStyle = "white";
+    context.shadowBlur = BLUR_AMOUNT;
+
+    drawScores();
+    drawCoins();
+
+    let gameOverInterval = 3000;
+    if (endTime + gameOverInterval > Date.now()) {
+        context.font = "30px hyperspace";
+        context.textAlign = "center";
+        let gameOver = "game over";
+        context.strokeText(gameOver, canvas.width / 2, canvas.height / 4);
+    } else if (true) {
+        asteroids = [];
+        bullets = [];
+        saucer.alive = false;
+        context.font = "30px hyperspace";
+        context.textAlign = "left";
+        let leftAlign = -canvas.width / 4;
+        let lineHeight = 30;
+        let tenBest = "your score is one of the ten best\n";
+        let enter = "please enter your initials\n";
+        let push = "push fire when correct";
+        context.strokeText(tenBest, canvas.width / 2 + leftAlign, canvas.height / 4);
+        context.strokeText(enter, canvas.width / 2 + leftAlign, canvas.height / 4 + lineHeight);
+        context.strokeText(push, canvas.width / 2 + leftAlign, canvas.height / 4 + 2 * lineHeight);
+
+        context.font = "50px hyperspace";
+        context.textAlign = "center";
+        let underlines = "___";
+        context.strokeText(underlines, canvas.width / 2, 2 * canvas.height / 3);
+    }
+}
+
+function drawScores() {
+    // Print score
+    context.font = "30px hyperspace";
+    context.textAlign = "left";
+    context.strokeText(padInteger(score), 10, 30);
+
+    // Print high-score
+    context.font = "20px hyperspace";
+    context.textAlign = "center";
+    context.strokeText(padInteger(highScore), canvas.width / 2, 20);
+}
+
+/**
+ * Print right upper number, possibly coins. Always 0 in our case.
+ */
+function drawCoins() {
+    context.font = "30px hyperspace";
+    context.textAlign = "right";
+    context.strokeText("00", canvas.width - 10, 30);
+}
+
+
+/**
+ * 'Make 0 into "00"'.
+ */
+function padInteger(i) {
+    if (i.toString().length === 1) {
+        return "0" + i.toString();
+    }
+    return i.toString();
+}
+
+/**
+ * Output is random double x where min <= x < max.
+ */
 function randomInRange(min, max) {
     return Math.random() * (max - min) + min;
 }
 
+/**
+ * Output is random integer x where min <= x <= max.
+ */
 function randomIntInRange(min, max) {
     min = Math.ceil(min);
     max = Math.floor(max);
     return Math.floor(Math.random() * (max - min + 1)) + min;
 }
 
+/**
+ * Convert degrees to radians.
+ */
 function toRadians(angle) {
     return angle * (Math.PI / 180);
 }
 
+/**
+ * Translate size so that objects can be drawn in a
+ * similar size across monitors with different resolutions.
+ */
+function toWindowSize(n) {
+    return canvas.width / n;
+}
+
+/**
+ * Set window size. Also set drawing variables
+ * that are shared across the game.
+ */
 function configureWindow() {
     context.canvas.width = window.innerWidth;
     context.canvas.height = window.innerHeight;
@@ -701,12 +829,4 @@ function configureWindow() {
     context.shadowOffsetX = 0;
     context.shadowOffsetY = 0;
     context.lineWidth = 2;
-}
-
-function startGame() {
-    score = 0;
-    asteroids = [];
-    bullets = [];
-    saucer.alive = false;
-    gameMode = "game";
 }
