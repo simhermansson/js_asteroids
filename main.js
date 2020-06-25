@@ -434,6 +434,8 @@ let score = 0;
 let scoreInterval = 0;
 let highScore = 0;
 let flashOn = true;
+let initials = ["a", null, null];
+let currentInitial = 0;
 
 let startTime = Date.now();
 let introTime = 3000;
@@ -460,13 +462,19 @@ document.addEventListener("keydown", function(event) {
     const SPACE_KEY = 32;
     const H_KEY = 72;
 
-    if (event.keyCode === LEFT_KEY) leftKey = true;
-    if (event.keyCode === RIGHT_KEY) rightKey = true;
-    if (event.keyCode === UP_KEY) upKey = true;
-    if (event.keyCode === SPACE_KEY && gameMode === "intro") {
-        startGame();
-    } else if (event.keyCode === SPACE_KEY) spaceKey = true;
-    if (player.alive && event.keyCode === H_KEY) player.hyperjump();
+    if (gameMode === "intro" || gameMode === "game") {
+        if (event.keyCode === LEFT_KEY) leftKey = true;
+        if (event.keyCode === RIGHT_KEY) rightKey = true;
+        if (event.keyCode === UP_KEY) upKey = true;
+        if (event.keyCode === SPACE_KEY && gameMode === "intro") {
+            startGame();
+        } else if (event.keyCode === SPACE_KEY) spaceKey = true;
+        if (player.alive && event.keyCode === H_KEY) player.hyperjump();
+    } else if (gameMode === "end") {
+        if (event.keyCode === LEFT_KEY) endScreenLeft();
+        if (event.keyCode === RIGHT_KEY) endScreenRight();
+        if (event.keyCode === SPACE_KEY) endScreenSpace();
+    }
 });
 
 document.addEventListener("keyup", function(event) {
@@ -499,7 +507,7 @@ function main() {
             }
         } else if (gameMode === "game") {
             drawGameText();
-            handleInput();
+            handlePlayerInput();
 
             if (asteroids.length === 0 && timeLastDestroyed + roundTimeout < Date.now()) {
                 spawnAsteroids();
@@ -646,7 +654,7 @@ function removeLife() {
     return true;
 }
 
-function handleInput() {
+function handlePlayerInput() {
     if (player.alive) {
         if (leftKey) {
             player.heading = (player.heading + 5) % 360;
@@ -737,21 +745,58 @@ function drawEndText() {
         asteroids = [];
         bullets = [];
         saucer.alive = false;
+
         context.font = "30px hyperspace";
         context.textAlign = "left";
         let leftAlign = -canvas.width / 4;
         let lineHeight = 30;
         let tenBest = "your score is one of the ten best\n";
-        let enter = "please enter your initials\n";
-        let push = "push fire when correct";
+        let enterInitials = "please enter your initials\n";
+        let pushRotate = "push rotate to select letter";
+        let pushHyperspace = "push hyperspace when letter is correct"
         context.strokeText(tenBest, canvas.width / 2 + leftAlign, canvas.height / 4);
-        context.strokeText(enter, canvas.width / 2 + leftAlign, canvas.height / 4 + lineHeight);
-        context.strokeText(push, canvas.width / 2 + leftAlign, canvas.height / 4 + 2 * lineHeight);
+        context.strokeText(enterInitials, canvas.width / 2 + leftAlign, canvas.height / 4 + lineHeight);
+        context.strokeText(pushRotate, canvas.width / 2 + leftAlign, canvas.height / 4 + 2 * lineHeight);
+        context.strokeText(pushHyperspace, canvas.width / 2 + leftAlign, canvas.height / 4 + 3 * lineHeight);
 
         context.font = "50px hyperspace";
         context.textAlign = "center";
-        let underlines = "___";
+        let underlines = "";
+        for (let i = 0; i < initials.length; i++) {
+            if (initials[i] != null) {
+                underlines += initials[i];
+            } else {
+                underlines += "_";
+            }
+        }
         context.strokeText(underlines, canvas.width / 2, 2 * canvas.height / 3);
+    }
+}
+
+function endScreenLeft() {
+    if (initials[currentInitial] == null) {
+        initials[currentInitial] = "a";
+    }
+    let char = initials[currentInitial].charCodeAt(0) % 97 - 1;
+    if (char < 0) {
+        char = String.fromCharCode(97 + 25);
+    } else {
+        char = String.fromCharCode(97 + char);
+    }
+    initials[currentInitial] = char;
+}
+
+function endScreenRight() {
+    if (initials[currentInitial] == null) {
+        initials[currentInitial] = "a";
+    }
+    initials[currentInitial] = String.fromCharCode((initials[currentInitial].charCodeAt(0) % 97 + 1) % 26 + 97);
+}
+
+function endScreenSpace() {
+    currentInitial++;
+    if (currentInitial === 3) {
+        gameMode = "intro";
     }
 }
 
