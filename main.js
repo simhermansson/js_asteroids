@@ -1,4 +1,4 @@
-class gameObject {
+class GameObject {
     constructor(x, y, dx, dy) {
         this.x = x;
         this.y = y;
@@ -28,7 +28,7 @@ class gameObject {
     }
 }
 
-class Ship extends gameObject {
+class Ship extends GameObject {
     constructor(x, y, dx, dy) {
         super(x, y, dx, dy);
         this.heading = 0;
@@ -36,9 +36,10 @@ class Ship extends gameObject {
         this.firingDelay = 100;
         this.radius = 15;
         this.alive = false;
+        this.maxBullets = 4;
     }
 
-    hyperjump() {
+    hyperSpace() {
         spawnExplosion(this.x, this.y);
         this.x = randomInRange(0, canvas.width);
         this.y = randomInRange(0, canvas.height);
@@ -52,7 +53,7 @@ class Ship extends gameObject {
             let by = -10 * Math.sin(toRadians(this.heading)) + this.dy;
             let b = new Bullet(this.x + (2 * bx),this.y + (2 * by), bx, by);
             bullets.push(b);
-            if (bullets.length > maxBullets) {
+            if (bullets.length > this.maxBullets) {
                 bullets.shift();
             }
         }
@@ -96,7 +97,7 @@ class Ship extends gameObject {
     }
 }
 
-class Saucer extends gameObject {
+class Saucer extends GameObject {
     constructor(x, y, dx, dy) {
         super(x, y, dx, dy);
         this.maxSpeed = 1;
@@ -111,7 +112,7 @@ class Saucer extends gameObject {
 
     update() {
         // Update position
-        gameObject.prototype.update.call(this);
+        GameObject.prototype.update.call(this);
 
         // Update dy if interval is up
         if (this.lastUpdate + this.updateInterval < Date.now()) {
@@ -143,6 +144,15 @@ class Saucer extends gameObject {
     contains(x, y) {
         return Math.abs(this.x - x) <= this.horizontalRadius &&
                Math.abs(this.y - y) <= this.verticalRadius;
+    }
+
+    fire(bx, by) {
+        let b = new Bullet(this.x + (2 * bx),this.y + (2 * by), bx, by);
+        b.firedBySaucer = true;
+        this.bullets.push(b);
+        if (this.bullets.length > this.maxBullets) {
+            this.bullets.shift();
+        }
     }
 
     draw() {
@@ -188,12 +198,7 @@ class LargeSaucer extends Saucer {
         let degrees = randomInRange(0, 360);
         let bx = 10 * Math.cos(degrees) + this.dx;
         let by = 10 * Math.sin(degrees) - this.dy;
-        let b = new Bullet(this.x + (2 * bx),this.y + (2 * by), bx, by);
-        b.firedBySaucer = true;
-        this.bullets.push(b);
-        if (this.bullets.length > this.maxBullets) {
-            this.bullets.shift();
-        }
+        Saucer.prototype.fire.call(this, bx, by);
     }
 }
 
@@ -208,17 +213,12 @@ class SmallSaucer extends Saucer {
     fire() {
         let accuracy = randomInRange(0.9, 1.1);
         if (score > 70000) {
-            this.accuracy = 1;
+            accuracy = 1;
         }
         let radians = Math.atan2(this.y - player.y, player.x - this.x) * accuracy;
         let bx = 10 * Math.cos(radians) + this.dx;
         let by = -10 * Math.sin(radians) + this.dy;
-        let b = new Bullet(this.x + (2 * bx),this.y + (2 * by), bx, by);
-        b.firedBySaucer = true;
-        this.bullets.push(b);
-        if (this.bullets.length > this.maxBullets) {
-            this.bullets.shift();
-        }
+        Saucer.prototype.fire.call(this, bx, by);
     }
 }
 
@@ -231,7 +231,7 @@ class Explosion extends Saucer {
         this.radius = 1;
         this.debris = [];
         for (let i = 0; i < this.debrisCount; i++) {
-            let o = new gameObject(this.x, this.y, randomInRange(-0.5, 0.5), randomInRange(-0.5, 0.5));
+            let o = new GameObject(this.x, this.y, randomInRange(-0.5, 0.5), randomInRange(-0.5, 0.5));
             this.debris.push(o);
         }
     }
@@ -245,7 +245,7 @@ class Explosion extends Saucer {
     }
 }
 
-class Bullet extends gameObject {
+class Bullet extends GameObject {
     constructor(x, y, dx, dy) {
         super(x, y, dx, dy);
         this.radius = 3;
@@ -253,7 +253,7 @@ class Bullet extends gameObject {
     }
 
     update() {
-        gameObject.prototype.update.call(this);
+        GameObject.prototype.update.call(this);
         for (let i = 0; i < asteroids.length; i++) {
             let o = asteroids[i];
             if (o.contains(this.x, this.y)) {
@@ -273,18 +273,17 @@ class Bullet extends gameObject {
     }
 }
 
-class Asteroid extends gameObject {
+class Asteroid extends GameObject {
     constructor(x, y, dx, dy) {
         super(x, y, dx, dy);
         this.shape = randomIntInRange(0, 2);
         this.points = [];
         this.alive = true;
-        this.exploded = false;
         this.maxSpeed = 2;
     }
 
     update() {
-        gameObject.prototype.update.call(this);
+        GameObject.prototype.update.call(this);
         if (player.alive && this.contains(player.x, player.y)) {
             player.kill();
         }
@@ -412,7 +411,6 @@ const BLUR_AMOUNT = 5;
 
 const canvas = document.getElementById("gameCanvas");
 const context = canvas.getContext("2d");
-configureWindow();
 
 // Initialize game variables
 let leftKey = false;
@@ -425,38 +423,37 @@ let lives = [];
 let asteroids = [];
 let bullets = [];
 let explosions = [];
-let minAsteroids = 4;
-let maxAsteroids = 6;
-let maxBullets = 4;
-let maxBulletSpeed = 2;
 let score = 0;
 let scoreInterval = 0;
 let highScore = 0;
 let highScores = [];
-loadHighScores();
-setInterval(loadHighScores, 1000);
-let flashOn = true;
 let initials = ["a", null, null];
 let currentInitial = 0;
 
-let startTime = Date.now();
-let introTime = 3000;
-let highScoreInterval = 5000;
-let highScoreTime = -highScoreInterval;
-let endTime = null;
 let timeLastDestroyed = Date.now();
-let roundTimeout = 4000;
 let lastSaucer = Date.now();
 let saucerInterval = 30000;
+
+// Timers
+let displayPlayer = true;
+let displayGameOver = true;
+let displayHighScores = false;
+let flashOn = true;
+let introModeTimer = null;
+let pushStartTimer = null;
 
 let saucer = new SmallSaucer(0, 0, 0, 0);
 saucer.alive = false;
 let player = null;
-spawnPlayer();
-player.alive = false;
 
 
 // Start game
+configureWindow();
+loadHighScores();
+setInterval(loadHighScores, 1000);
+toIntro();
+spawnPlayer();
+player.alive = false;
 main();
 
 document.addEventListener("keydown", function(event) {
@@ -473,7 +470,7 @@ document.addEventListener("keydown", function(event) {
         if (event.keyCode === SPACE_KEY && gameMode === "intro") {
             startGame();
         } else if (event.keyCode === SPACE_KEY) spaceKey = true;
-        if (player.alive && event.keyCode === H_KEY) player.hyperjump();
+        if (player.alive && event.keyCode === H_KEY) player.hyperSpace();
     } else if (gameMode === "end") {
         if (event.keyCode === LEFT_KEY) endScreenLeft();
         if (event.keyCode === RIGHT_KEY) endScreenRight();
@@ -503,8 +500,9 @@ function main() {
         if (gameMode === "intro") {
             drawIntroText();
             score = 0;
-            if (highScoreTime + highScoreInterval > Date.now()) {
+            if (displayHighScores) {
                 asteroids = [];
+                explosions = [];
                 saucer.alive = false;
             } else {
                 while (asteroids.length < 10) {
@@ -518,15 +516,14 @@ function main() {
             drawGameText();
             handlePlayerInput();
 
+            let roundTimeout = 4000;
             if (asteroids.length === 0 && timeLastDestroyed + roundTimeout < Date.now()) {
                 spawnAsteroids();
             }
-
             if (scoreInterval >= 10000) {
                 addLife();
                 scoreInterval %= 10000;
             }
-
             if (!saucer.alive && lastSaucer + saucerInterval < Date.now()) {
                 lastSaucer = Date.now();
                 spawnSaucer();
@@ -603,35 +600,49 @@ function spawnSaucer() {
 }
 
 function spawnAsteroids() {
+    let minAsteroids = 4, maxAsteroids = 6, asteroidVelocity = 2;
     let numberToSpawn = randomIntInRange(minAsteroids, maxAsteroids);
     for (let i = 0; i < numberToSpawn; i++) {
         let side = randomIntInRange(0, 3);
         if (side === 0) {
             let a = new LargeAsteroid(0,
                 randomInRange(0, canvas.height),
-                randomInRange(-maxBulletSpeed, maxBulletSpeed),
-                randomInRange(-maxBulletSpeed, maxBulletSpeed));
+                randomInRange(-asteroidVelocity, asteroidVelocity),
+                randomInRange(-asteroidVelocity, asteroidVelocity));
             asteroids.push(a);
         } else if (side === 1) {
             let a = new LargeAsteroid(randomInRange(0, canvas.width),
                 0,
-                randomInRange(-maxBulletSpeed, maxBulletSpeed),
-                randomInRange(-maxBulletSpeed, maxBulletSpeed));
+                randomInRange(-asteroidVelocity, asteroidVelocity),
+                randomInRange(-asteroidVelocity, asteroidVelocity));
             asteroids.push(a);
         } else if (side === 2) {
             let a = new LargeAsteroid(canvas.width,
                 randomInRange(0, canvas.height),
-                randomInRange(-maxBulletSpeed, maxBulletSpeed),
-                randomInRange(-maxBulletSpeed, maxBulletSpeed));
+                randomInRange(-asteroidVelocity, asteroidVelocity),
+                randomInRange(-asteroidVelocity, asteroidVelocity));
             asteroids.push(a);
         } else if (side === 3) {
             let a = new LargeAsteroid(randomInRange(0, canvas.width),
                 canvas.height,
-                randomInRange(-maxBulletSpeed, maxBulletSpeed),
-                randomInRange(-maxBulletSpeed, maxBulletSpeed));
+                randomInRange(-asteroidVelocity, asteroidVelocity),
+                randomInRange(-asteroidVelocity, asteroidVelocity));
             asteroids.push(a);
         }
     }
+}
+
+function toIntro() {
+    gameMode = "intro";
+    displayPlayer = true;
+
+    introModeTimer = setInterval(function() {
+        displayHighScores = !displayHighScores;
+    }, 10000);
+
+    pushStartTimer = setInterval(function() {
+        flashOn = !flashOn;
+    }, 500);
 }
 
 function startGame() {
@@ -641,12 +652,19 @@ function startGame() {
     for (let i = 0; i < 3; i++) addLife();
     saucer.alive = false;
     gameMode = "game";
+    clearInterval(introModeTimer);
+    clearInterval(pushStartTimer);
+    setTimeout(function() {
+        displayPlayer = false;
+    }, 3000);
     spawnPlayer();
 }
 
 function endGame() {
     gameMode = "end";
-    endTime = Date.now();
+    setTimeout(function() {
+        displayGameOver = false;
+    }, 3000);
 }
 
 function addLife() {
@@ -698,29 +716,24 @@ function drawIntroText() {
     drawCoins();
 
     // Print flashing push start
-    let flashInterval = 500;
-    if (startTime + flashInterval > Date.now()) {
-        if (flashOn) {
-            context.font = "30px hyperspace";
-            context.textAlign = "center";
-            let pushStart = "push start";
-            context.strokeText(pushStart, canvas.width / 2, canvas.height / 4);
-        }
-    } else {
-        startTime = Date.now();
-        flashOn = !flashOn;
+    if (flashOn) {
+        context.font = "30px hyperspace";
+        context.textAlign = "center";
+        let pushStart = "push start";
+        context.strokeText(pushStart, canvas.width / 2, canvas.height / 4);
     }
 
     // Print 1 coin 1 start
     context.font = "30px hyperspace";
     context.textAlign = "center";
     let oneCoin = "1 coin 1 start";
-    context.strokeText(oneCoin, canvas.width / 2, 5 * canvas.height / 6);
+    context.strokeText(oneCoin, canvas.width / 2, 9 * canvas.height / 10);
 
-    if (highScoreTime + highScoreInterval > Date.now()) {
+    // Print high-scores
+    if (displayHighScores) {
         context.font = "30px hyperspace";
         context.textAlign = "left";
-        let leftAlign = -canvas.width / 16;
+        let leftAlign = -canvas.width / 13;
         for (let i = 0; i < highScores.length; i++) {
 
             let line = (i+1).toString() + ". " + highScores[i].score + " " + highScores[i].name;
@@ -736,7 +749,7 @@ function drawGameText() {
     drawScores();
 
     // Print player one text if first 3 seconds
-    if (startTime + introTime > Date.now()) {
+    if (displayPlayer) {
         context.font = "30px hyperspace";
         context.textAlign = "center";
         let playerText = "player 1";
@@ -756,8 +769,7 @@ function drawEndText() {
     drawScores();
     drawCoins();
 
-    let gameOverInterval = 3000;
-    if (endTime + gameOverInterval > Date.now()) {
+    if (displayGameOver) {
         context.font = "30px hyperspace";
         context.textAlign = "center";
         let gameOver = "game over";
@@ -792,12 +804,12 @@ function drawEndText() {
         }
         context.strokeText(underlines, canvas.width / 2, 2 * canvas.height / 3);
     } else {
-        gameMode = "intro";
+        toIntro();
     }
 }
 
 function endScreenLeft() {
-    if (initials[currentInitial] === null) {
+    if (initials[currentInitial] == null) {
         initials[currentInitial] = "a";
     }
     let char = initials[currentInitial].charCodeAt(0) % 97 - 1;
@@ -810,14 +822,14 @@ function endScreenLeft() {
 }
 
 function endScreenRight() {
-    if (initials[currentInitial] === null) {
+    if (initials[currentInitial] == null) {
         initials[currentInitial] = "a";
     }
     initials[currentInitial] = String.fromCharCode((initials[currentInitial].charCodeAt(0) % 97 + 1) % 26 + 97);
 }
 
 function endScreenSpace() {
-    if (initials[currentInitial] !== null) {
+    if (initials[currentInitial] != null) {
         currentInitial++;
         if (currentInitial === 3) {
             addHighScore()
@@ -879,7 +891,6 @@ function addHighScore() {
     saveHighScores();
     initials = ["a", null, null];
     currentInitial = 0;
-    highScoreTime = Date.now();
 }
 
 /**
@@ -913,14 +924,6 @@ function randomIntInRange(min, max) {
  */
 function toRadians(angle) {
     return angle * (Math.PI / 180);
-}
-
-/**
- * Translate size so that objects can be drawn in a
- * similar size across monitors with different resolutions.
- */
-function toWindowSize(n) {
-    return canvas.width / n;
 }
 
 /**
