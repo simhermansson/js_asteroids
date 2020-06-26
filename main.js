@@ -423,7 +423,6 @@ let spaceKey = false;
 let gameMode = "intro";
 let introHighScores = false;
 let lives = [];
-for (let i = 0; i < 3; i++) addLife();
 let asteroids = [];
 let bullets = [];
 let explosions = [];
@@ -438,7 +437,7 @@ let highScores = [];
 loadHighScores();
 setInterval(loadHighScores, 1000);
 let flashOn = true;
-let initials = ["a", null, null];
+let initials = [null, null, null];
 let currentInitial = 0;
 
 let startTime = Date.now();
@@ -633,6 +632,7 @@ function startGame() {
     score = 0;
     asteroids = [];
     bullets = [];
+    for (let i = 0; i < 3; i++) addLife();
     saucer.alive = false;
     gameMode = "game";
     spawnPlayer();
@@ -801,11 +801,13 @@ function endScreenRight() {
 }
 
 function endScreenSpace() {
-    currentInitial++;
-    if (currentInitial === 3) {
-        addHighScore()
-        introHighScores = true;
-        gameMode = "intro";
+    if (initials[currentInitial] != null) {
+        currentInitial++;
+        if (currentInitial === 3) {
+            addHighScore()
+            introHighScores = true;
+            gameMode = "intro";
+        }
     }
 }
 
@@ -830,36 +832,13 @@ function drawCoins() {
     context.strokeText("00", canvas.width - 10, 30);
 }
 
-/**
- * Get highScores.txt on server and uploads that information
- * to the highScore array.
- */
 function loadHighScores() {
-    let xhr = new XMLHttpRequest();
-    xhr.open("GET", "highScores.txt", false);
-    xhr.send();
-    if (xhr.status === 200) {
-        let result = xhr.responseText;
-        let lines = result.split("\n");
-        for (let i = 0; i < lines.length; i++) {
-            let score = lines[i].split(" ")[0];
-            let name = lines[i].split(" ")[1];
-            let hs = {
-                score:score,
-                name:name
-            }
-            highScores.push(hs);
-        }
-        if (highScores.length) highScore = highScores[0].score;
-    } else setTimeout(loadHighScores, 1000);
+    highScores = JSON.parse(localStorage.getItem("highScores") || "[]");
+    if (highScores[0] != null) highScore = highScores[0].score;
 }
 
-/**
- * Sends the highScore array to the server.
- */
-function sendHighScores() {
-    let xhr = new XMLHttpRequest();
-    xhr()
+function saveHighScores() {
+    localStorage.setItem("highScores", JSON.stringify(highScores));
 }
 
 function isHighScore() {
@@ -876,21 +855,14 @@ function isHighScore() {
  * only 10 elements and the initials is reset with this function.
  */
 function addHighScore() {
-    let nextScore = null;
-    for (let i = 0; i < Math.min(highScores.length + 1, 10); i++) {
-        if (nextScore !== null) {
-            let scoreCopy = highScores[i];
-            highScores[i] = nextScore;
-            nextScore = scoreCopy;
-        } else if (highScores[i].score < score) {
-            nextScore = highScores[i];
-            highScores[i] = {
-                score:score,
-                name:"hej"
-            };
-        }
-    }
-    initials = ["a", null, null];
+    highScores.push({
+        score:score,
+        name:"hej"
+    });
+    highScores.sort((a, b) => (a.score < b.score) ? 1 : ((b.score < a.score) ? -1 : 0));
+    if (highScores.length > 10) highScores.pop();
+    saveHighScores();
+    initials = [null, null, null];
     currentInitial = 0;
 }
 
