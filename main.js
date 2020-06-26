@@ -421,7 +421,6 @@ let upKey = false;
 let spaceKey = false;
 
 let gameMode = "intro";
-let introHighScores = false;
 let lives = [];
 let asteroids = [];
 let bullets = [];
@@ -437,11 +436,13 @@ let highScores = [];
 loadHighScores();
 setInterval(loadHighScores, 1000);
 let flashOn = true;
-let initials = [null, null, null];
+let initials = ["a", null, null];
 let currentInitial = 0;
 
 let startTime = Date.now();
 let introTime = 3000;
+let highScoreInterval = 5000;
+let highScoreTime = -highScoreInterval;
 let endTime = null;
 let timeLastDestroyed = Date.now();
 let roundTimeout = 4000;
@@ -502,11 +503,16 @@ function main() {
         if (gameMode === "intro") {
             drawIntroText();
             score = 0;
-            while (asteroids.length < 10) {
-                spawnAsteroids(1);
-            }
-            if (!saucer.alive) {
-                spawnSaucer();
+            if (highScoreTime + highScoreInterval > Date.now()) {
+                asteroids = [];
+                saucer.alive = false;
+            } else {
+                while (asteroids.length < 10) {
+                    spawnAsteroids(1);
+                }
+                if (!saucer.alive) {
+                    spawnSaucer();
+                }
             }
         } else if (gameMode === "game") {
             drawGameText();
@@ -710,6 +716,17 @@ function drawIntroText() {
     context.textAlign = "center";
     let oneCoin = "1 coin 1 start";
     context.strokeText(oneCoin, canvas.width / 2, 5 * canvas.height / 6);
+
+    if (highScoreTime + highScoreInterval > Date.now()) {
+        context.font = "30px hyperspace";
+        context.textAlign = "left";
+        let leftAlign = -canvas.width / 16;
+        for (let i = 0; i < highScores.length; i++) {
+
+            let line = (i+1).toString() + ". " + highScores[i].score + " " + highScores[i].name;
+            context.strokeText(line, canvas.width / 2 + leftAlign, canvas.height / 3 + i * 30);
+        }
+    }
 }
 
 function drawGameText() {
@@ -775,13 +792,12 @@ function drawEndText() {
         }
         context.strokeText(underlines, canvas.width / 2, 2 * canvas.height / 3);
     } else {
-        introHighScores = true;
         gameMode = "intro";
     }
 }
 
 function endScreenLeft() {
-    if (initials[currentInitial] == null) {
+    if (initials[currentInitial] === null) {
         initials[currentInitial] = "a";
     }
     let char = initials[currentInitial].charCodeAt(0) % 97 - 1;
@@ -794,18 +810,17 @@ function endScreenLeft() {
 }
 
 function endScreenRight() {
-    if (initials[currentInitial] == null) {
+    if (initials[currentInitial] === null) {
         initials[currentInitial] = "a";
     }
     initials[currentInitial] = String.fromCharCode((initials[currentInitial].charCodeAt(0) % 97 + 1) % 26 + 97);
 }
 
 function endScreenSpace() {
-    if (initials[currentInitial] != null) {
+    if (initials[currentInitial] !== null) {
         currentInitial++;
         if (currentInitial === 3) {
             addHighScore()
-            introHighScores = true;
             gameMode = "intro";
         }
     }
@@ -857,13 +872,14 @@ function isHighScore() {
 function addHighScore() {
     highScores.push({
         score:score,
-        name:"hej"
+        name:initials[0] + initials[1] + initials[2]
     });
     highScores.sort((a, b) => (a.score < b.score) ? 1 : ((b.score < a.score) ? -1 : 0));
     if (highScores.length > 10) highScores.pop();
     saveHighScores();
-    initials = [null, null, null];
+    initials = ["a", null, null];
     currentInitial = 0;
+    highScoreTime = Date.now();
 }
 
 /**
