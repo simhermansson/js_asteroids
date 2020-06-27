@@ -37,6 +37,22 @@ class Ship extends GameObject {
         this.radius = 15;
         this.alive = false;
         this.maxBullets = 4;
+        this.maxVelocity = 6;
+        this.friction = 0.99;
+    }
+
+    update() {
+        GameObject.prototype.update.call(this);
+        if (this.dx > 0) {
+            this.dx = Math.min(this.dx * this.friction, this.maxVelocity);
+        } else {
+            this.dx = Math.max(this.dx * this.friction, -this.maxVelocity);
+        }
+        if (this.dy > 0) {
+            this.dy = Math.min(this.dy * this.friction, this.maxVelocity);
+        } else {
+            this.dy = Math.max(this.dy * this.friction, -this.maxVelocity);
+        }
     }
 
     hyperSpace() {
