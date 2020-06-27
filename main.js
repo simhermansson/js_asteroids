@@ -51,7 +51,9 @@ class Ship extends GameObject {
             this.lastFiring = Date.now();
             let bx = 10 * Math.cos(toRadians(this.heading)) + this.dx;
             let by = -10 * Math.sin(toRadians(this.heading)) + this.dy;
-            let b = new Bullet(this.x + (2 * bx),this.y + (2 * by), bx, by);
+            let x = this.x + Math.cos(toRadians(this.heading)) * this.radius * 2;
+            let y = this.y - Math.sin(toRadians(this.heading)) * this.radius * 2;
+            let b = new Bullet(x, y, bx, by);
             bullets.push(b);
             if (bullets.length > this.maxBullets) {
                 bullets.shift();
@@ -111,7 +113,6 @@ class Saucer extends GameObject {
     }
 
     update() {
-        // Update position
         GameObject.prototype.update.call(this);
 
         // Update dy if interval is up
@@ -290,6 +291,14 @@ class Asteroid extends GameObject {
         return !this.alive;
     }
 
+    kill() {
+        this.alive = false;
+        timeLastDestroyed = Date.now();
+        score += this.points;
+        scoreInterval += this.points;
+        spawnExplosion(this.x, this.y);
+    }
+
     draw() {
         context.strokeStyle = "white";
         context.shadowBlur = BLUR_AMOUNT;
@@ -348,16 +357,11 @@ class LargeAsteroid extends Asteroid {
     }
 
     kill() {
-        this.alive = false;
-        timeLastDestroyed = Date.now();
-        score += this.points;
-        scoreInterval += this.points;
-        spawnExplosion(this.x, this.y);
-
+        Asteroid.prototype.kill.call(this);
         let a = new MediumAsteroid(this.x, this.y, randomInRange(-this.maxSpeed, this.maxSpeed),
-            randomInRange(-this.maxSpeed, this.maxSpeed));
+                                                   randomInRange(-this.maxSpeed, this.maxSpeed));
         let b = new MediumAsteroid(this.x, this.y, randomInRange(-this.maxSpeed, this.maxSpeed),
-            randomInRange(-this.maxSpeed, this.maxSpeed));
+                                                   randomInRange(-this.maxSpeed, this.maxSpeed));
         asteroids.push(a);
         asteroids.push(b);
     }
@@ -371,12 +375,7 @@ class MediumAsteroid extends Asteroid {
     }
 
     kill() {
-        this.alive = false;
-        timeLastDestroyed = Date.now();
-        score += this.points;
-        scoreInterval += this.points;
-        spawnExplosion(this.x, this.y);
-
+        Asteroid.prototype.kill.call(this);
         let a = new SmallAsteroid(this.x, this.y, randomInRange(-this.maxSpeed, this.maxSpeed),
                                                   randomInRange(-this.maxSpeed, this.maxSpeed));
         let b = new SmallAsteroid(this.x, this.y, randomInRange(-this.maxSpeed, this.maxSpeed),
@@ -392,14 +391,6 @@ class SmallAsteroid extends Asteroid {
         this.radius = 10;
         this.points = 100;
     }
-
-    kill() {
-        this.alive = false;
-        timeLastDestroyed = Date.now();
-        score += this.points;
-        scoreInterval += this.points;
-        spawnExplosion(this.x, this.y);
-    }
 }
 
 
@@ -412,12 +403,12 @@ const BLUR_AMOUNT = 5;
 const canvas = document.getElementById("gameCanvas");
 const context = canvas.getContext("2d");
 
-// Initialize game variables
 let leftKey = false;
 let rightKey = false;
 let upKey = false;
 let spaceKey = false;
 
+// Initialize game variables
 let gameMode = "intro";
 let lives = [];
 let asteroids = [];
@@ -430,6 +421,7 @@ let highScores = [];
 let initials = ["a", null, null];
 let currentInitial = 0;
 
+// Dates
 let timeLastDestroyed = Date.now();
 let lastSaucer = Date.now();
 let saucerInterval = 30000;
@@ -558,7 +550,7 @@ function updateObjectArray(arr) {
         o.draw();
         if (o.update()) {
             arr.splice(i, 1);
-            i = Math.max(i-1, 0);
+            i = Math.max(i - 1, 0);
         }
     }
 }
@@ -634,12 +626,13 @@ function spawnAsteroids() {
 
 function toIntro() {
     gameMode = "intro";
-    displayPlayer = true;
 
+    displayHighScores = false;
     introModeTimer = setInterval(function() {
         displayHighScores = !displayHighScores;
     }, 10000);
 
+    flashOn = true;
     pushStartTimer = setInterval(function() {
         flashOn = !flashOn;
     }, 500);
@@ -651,13 +644,16 @@ function startGame() {
     bullets = [];
     for (let i = 0; i < 3; i++) addLife();
     saucer.alive = false;
+    displayPlayer = true;
     gameMode = "game";
+    spawnPlayer();
+
     clearInterval(introModeTimer);
     clearInterval(pushStartTimer);
+
     setTimeout(function() {
         displayPlayer = false;
     }, 3000);
-    spawnPlayer();
 }
 
 function endGame() {
@@ -729,7 +725,6 @@ function drawIntroText() {
     let oneCoin = "1 coin 1 start";
     context.strokeText(oneCoin, canvas.width / 2, 9 * canvas.height / 10);
 
-    // Print high-scores
     if (displayHighScores) {
         context.font = "30px hyperspace";
         context.textAlign = "left";
@@ -786,7 +781,7 @@ function drawEndText() {
         let tenBest = "your score is one of the ten best\n";
         let enterInitials = "please enter your initials\n";
         let pushRotate = "push rotate to select letter";
-        let pushHyperspace = "push hyperspace when letter is correct"
+        let pushHyperspace = "push fire when letter is correct"
         context.strokeText(tenBest, canvas.width / 2 + leftAlign, canvas.height / 4);
         context.strokeText(enterInitials, canvas.width / 2 + leftAlign, canvas.height / 4 + lineHeight);
         context.strokeText(pushRotate, canvas.width / 2 + leftAlign, canvas.height / 4 + 2 * lineHeight);
@@ -808,6 +803,10 @@ function drawEndText() {
     }
 }
 
+/**
+ * Button function for the end screen.
+ * Used for selecting initials.
+ */
 function endScreenLeft() {
     if (initials[currentInitial] == null) {
         initials[currentInitial] = "a";
@@ -821,6 +820,10 @@ function endScreenLeft() {
     initials[currentInitial] = char;
 }
 
+/**
+ * Button function for the end screen.
+ * Used for selecting initials.
+ */
 function endScreenRight() {
     if (initials[currentInitial] == null) {
         initials[currentInitial] = "a";
@@ -828,23 +831,29 @@ function endScreenRight() {
     initials[currentInitial] = String.fromCharCode((initials[currentInitial].charCodeAt(0) % 97 + 1) % 26 + 97);
 }
 
+/**
+ * Button function for the end screen.
+ * Used for selecting initials.
+ */
 function endScreenSpace() {
     if (initials[currentInitial] != null) {
         currentInitial++;
         if (currentInitial === 3) {
             addHighScore()
-            gameMode = "intro";
+            toIntro();
+            displayHighScores = true;
         }
     }
 }
 
+/**
+ * Draw score and highscore
+ */
 function drawScores() {
-    // Print score
     context.font = "30px hyperspace";
     context.textAlign = "left";
     context.strokeText(padInteger(score), 10, 30);
 
-    // Print high-score
     context.font = "20px hyperspace";
     context.textAlign = "center";
     context.strokeText(padInteger(highScore), canvas.width / 2, 20);
@@ -859,15 +868,26 @@ function drawCoins() {
     context.strokeText("00", canvas.width - 10, 30);
 }
 
+/**
+ * Load highScores saved using localStorage and JSON,
+ * get empty array if no highScores is saved.
+ */
 function loadHighScores() {
     highScores = JSON.parse(localStorage.getItem("highScores") || "[]");
     if (highScores[0] != null) highScore = highScores[0].score;
 }
 
+/**
+ * Saved highScores using localStorage and JSON.
+ */
 function saveHighScores() {
     localStorage.setItem("highScores", JSON.stringify(highScores));
 }
 
+/**
+ * Loop through all highScores and check if there
+ * is place in the top 10 for this score.
+ */
 function isHighScore() {
     if (highScores.length < 10) return true;
     for (let i = 0; i < highScores.length; i++) {
