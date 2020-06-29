@@ -39,6 +39,10 @@ class Ship extends GameObject {
         this.maxBullets = 4;
         this.maxVelocity = 6;
         this.friction = 0.99;
+        this.lastThrust = Date.now();
+        this.thrustInterval = 50;
+        this.exhaust = new GameObject(x, y, 0, 0);
+        this.exhaust.radius = 5;
     }
 
     update() {
@@ -52,6 +56,15 @@ class Ship extends GameObject {
             this.dy = Math.min(this.dy * this.friction, this.maxVelocity);
         } else {
             this.dy = Math.max(this.dy * this.friction, -this.maxVelocity);
+        }
+
+        if (this.alive && upKey && this.lastThrust + this.thrustInterval < Date.now()) {
+            this.lastThrust = Date.now();
+            let x = this.x + Math.cos(toRadians(this.heading+180)) * this.radius;
+            let y = this.y - Math.sin(toRadians(this.heading+180)) * this.radius;
+            this.exhaust.x = x;
+            this.exhaust.y = y;
+            this.exhaust.draw();
         }
     }
 
@@ -240,11 +253,11 @@ class SmallSaucer extends Saucer {
 }
 
 class Explosion extends Saucer {
-    constructor(x, y) {
+    constructor(x, y, explosionTimer, debrisCount) {
         super(x, y, 0, 0);
         this.startTime = Date.now();
-        this.explosionTimer = 1500;
-        this.debrisCount = 10;
+        this.explosionTimer = explosionTimer;
+        this.debrisCount = debrisCount;
         this.radius = 1;
         this.debris = [];
         for (let i = 0; i < this.debrisCount; i++) {
@@ -590,8 +603,8 @@ function spawnPlayer() {
     }
 }
 
-function spawnExplosion(x, y) {
-    let explosion = new Explosion(x, y);
+function spawnExplosion(x, y, explosionTimer = 1500, debrisCount = 10) {
+    let explosion = new Explosion(x, y, explosionTimer, debrisCount);
     explosions.push(explosion);
 }
 
