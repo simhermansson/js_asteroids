@@ -308,7 +308,7 @@ class Asteroid extends GameObject {
         this.shape = randomIntInRange(0, 2);
         this.points = [];
         this.alive = true;
-        this.maxSpeed = 2;
+        this.maxSpeed = 3;
     }
 
     update() {
