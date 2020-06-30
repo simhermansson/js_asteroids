@@ -980,4 +980,11 @@ function configureWindow() {
     context.shadowOffsetX = 0;
     context.shadowOffsetY = 0;
     context.lineWidth = 2;
+
+    // Fill once with completely black
+    context.shadowBlur = 0;
+    context.fillStyle = "black";
+    context.strokestyle = "white";
+    context.fillRect(0, 0, canvas.width, canvas.height);
+    context.strokeRect(0, 0, canvas.width, canvas.height);
 }
