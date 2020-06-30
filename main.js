@@ -58,7 +58,7 @@ class Ship extends GameObject {
             this.dy = Math.max(this.dy * this.friction, -this.maxVelocity);
         }
 
-        if (this.alive && upKey && this.lastThrust + this.thrustInterval < Date.now()) {
+        if (this.alive && keyMap.get(ARROW_UP) && this.lastThrust + this.thrustInterval < Date.now()) {
             this.lastThrust = Date.now();
             let x = this.x + Math.cos(toRadians(this.heading+180)) * this.radius;
             let y = this.y - Math.sin(toRadians(this.heading+180)) * this.radius;
@@ -219,7 +219,6 @@ class LargeSaucer extends Saucer {
     constructor(x, y, dx, dy) {
         super(x, y, dx, dy);
         this.points = 200;
-        this.accuracy = 0.3;
         this.verticalRadius = 15;
         this.horizontalRadius = 30;
     }
@@ -432,10 +431,17 @@ const BLUR_AMOUNT = 5;
 const canvas = document.getElementById("gameCanvas");
 const context = canvas.getContext("2d");
 
-let leftKey = false;
-let rightKey = false;
-let upKey = false;
-let spaceKey = false;
+const ARROW_LEFT = "ArrowLeft";
+const ARROW_RIGHT = "ArrowRight";
+const ARROW_UP = "ArrowUp";
+const SPACE = "Space";
+const KEY_H = "KeyH";
+let keyMap = new Map();
+keyMap.set(ARROW_LEFT, false);
+keyMap.set(ARROW_RIGHT, false);
+keyMap.set(ARROW_UP, false);
+keyMap.set(SPACE, false);
+keyMap.set(KEY_H, false);
 
 // Initialize game variables
 let gameMode = "intro";
@@ -478,37 +484,25 @@ player.alive = false;
 main();
 
 document.addEventListener("keydown", function(event) {
-    const LEFT_KEY = 37;
-    const RIGHT_KEY = 39;
-    const UP_KEY = 38;
-    const SPACE_KEY = 32;
-    const H_KEY = 72;
-
-    if (gameMode === "intro" || gameMode === "game") {
-        if (event.keyCode === LEFT_KEY) leftKey = true;
-        if (event.keyCode === RIGHT_KEY) rightKey = true;
-        if (event.keyCode === UP_KEY) upKey = true;
-        if (event.keyCode === SPACE_KEY && gameMode === "intro") {
-            startGame();
-        } else if (event.keyCode === SPACE_KEY) spaceKey = true;
-        if (player.alive && event.keyCode === H_KEY) player.hyperSpace();
+    if (event.code === SPACE && gameMode === "intro") {
+        startGame();
+    } else if (player.alive && event.code === KEY_H) {
+        player.hyperSpace();
     } else if (gameMode === "end") {
-        if (event.keyCode === LEFT_KEY) endScreenLeft();
-        if (event.keyCode === RIGHT_KEY) endScreenRight();
-        if (event.keyCode === SPACE_KEY) endScreenSpace();
+        if (event.code === ARROW_LEFT) {
+            endScreenLeft();
+        } else if (event.code === ARROW_RIGHT) {
+            endScreenRight();
+        } else if (event.code === SPACE) {
+            endScreenSpace();
+        }
+    } else {
+        keyMap.set(event.code, true);
     }
 });
 
 document.addEventListener("keyup", function(event) {
-    const LEFT_KEY = 37;
-    const RIGHT_KEY = 39;
-    const UP_KEY = 38;
-    const SPACE_KEY = 32;
-
-    if (event.keyCode === LEFT_KEY) leftKey = false;
-    if (event.keyCode === RIGHT_KEY) rightKey = false;
-    if (event.keyCode === UP_KEY) upKey = false;
-    if (event.keyCode === SPACE_KEY) spaceKey = false;
+    keyMap.set(event.code, false);
 });
 
 window.addEventListener("resize", configureWindow, false);
@@ -709,17 +703,17 @@ function removeLife() {
 
 function handlePlayerInput() {
     if (player.alive) {
-        if (leftKey) {
+        if (keyMap.get(ARROW_LEFT)) {
             player.heading = (player.heading + 5) % 360;
         }
-        if (rightKey) {
+        if (keyMap.get(ARROW_RIGHT)) {
             player.heading = (player.heading - 5) % 360;
         }
-        if (upKey) {
+        if (keyMap.get(ARROW_UP)) {
             player.dx += 0.1 * Math.cos(toRadians(player.heading));
             player.dy -= 0.1 * Math.sin(toRadians(player.heading));
         }
-        if (spaceKey) {
+        if (keyMap.get(SPACE)) {
             player.fire();
         }
     }
