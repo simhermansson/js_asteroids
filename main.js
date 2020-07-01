@@ -424,7 +424,7 @@ class SmallAsteroid extends Asteroid {
 
 // Game constants
 const GAME_SPEED = 1000 / 60;
-const CANVAS_BORDER_COLOUR = "gray";
+const CANVAS_BORDER_COLOUR = "white";
 const CANVAS_BACKGROUND_COLOUR = "rgba(0, 0, 0, 0.5)";
 const BLUR_AMOUNT = 5;
 
@@ -477,7 +477,6 @@ let player = null;
 // Start game
 configureWindow();
 loadHighScores();
-setInterval(loadHighScores, 1000);
 toIntro();
 spawnPlayer();
 player.alive = false;
@@ -653,7 +652,7 @@ function toIntro() {
     displayHighScores = false;
     introModeTimer = setInterval(function() {
         displayHighScores = !displayHighScores;
-    }, 10000);
+    }, 17000);
 
     flashOn = true;
     pushStartTimer = setInterval(function() {
@@ -724,54 +723,51 @@ function clearCanvas() {
     context.fillStyle = CANVAS_BACKGROUND_COLOUR;
     context.strokestyle = CANVAS_BORDER_COLOUR;
     context.fillRect(0, 0, canvas.width, canvas.height);
-    context.strokeRect(0, 0, canvas.width, canvas.height);
+    context.strokeRect(0, 0, canvas.width - 1, canvas.height - 1);
 }
 
 function drawIntroText() {
-    context.strokeStyle = "white";
-    context.shadowBlur = BLUR_AMOUNT;
-
     drawScores();
     drawCoins();
 
+    context.strokeStyle = "white";
+    context.shadowBlur = BLUR_AMOUNT;
+    context.font = "30px hyperspace";
+    context.textAlign = "center";
+
     // Print flashing push start
     if (flashOn) {
-        context.font = "30px hyperspace";
-        context.textAlign = "center";
         let pushStart = "push start";
-        context.strokeText(pushStart, canvas.width / 2, canvas.height / 4);
+        context.strokeText(pushStart, canvas.width / 2, canvas.height / 5);
     }
 
     // Print 1 coin 1 start
-    context.font = "30px hyperspace";
-    context.textAlign = "center";
     let oneCoin = "1 coin 1 start";
     context.strokeText(oneCoin, canvas.width / 2, 9 * canvas.height / 10);
 
     if (displayHighScores) {
-        context.font = "30px hyperspace";
+        let high = "high scores";
+        context.strokeText(high, canvas.width / 2, 2 * canvas.height / 7);
         context.textAlign = "left";
         let leftAlign = -canvas.width / 13;
         for (let i = 0; i < highScores.length; i++) {
-
             let line = (i+1).toString() + ". " + highScores[i].score + " " + highScores[i].name;
-            context.strokeText(line, canvas.width / 2 + leftAlign, canvas.height / 3 + i * 30);
+            context.strokeText(line, canvas.width / 2 + leftAlign, canvas.height / 3 + (i+1) * 30);
         }
     }
 }
 
 function drawGameText() {
-    context.strokeStyle = "white";
-    context.shadowBlur = BLUR_AMOUNT;
-
     drawScores();
 
     // Print player one text if first 3 seconds
     if (displayPlayer) {
+        context.strokeStyle = "white";
+        context.shadowBlur = BLUR_AMOUNT;
         context.font = "30px hyperspace";
         context.textAlign = "center";
         let playerText = "player 1";
-        context.strokeText(playerText, canvas.width / 2, canvas.height / 4);
+        context.strokeText(playerText, canvas.width / 2, canvas.height / 5);
     }
 
     // Print lives left
@@ -781,23 +777,22 @@ function drawGameText() {
 }
 
 function drawEndText() {
-    context.strokeStyle = "white";
-    context.shadowBlur = BLUR_AMOUNT;
-
     drawScores();
     drawCoins();
 
+    context.strokeStyle = "white";
+    context.shadowBlur = BLUR_AMOUNT;
+    context.font = "30px hyperspace";
+
     if (displayGameOver) {
-        context.font = "30px hyperspace";
         context.textAlign = "center";
         let gameOver = "game over";
-        context.strokeText(gameOver, canvas.width / 2, canvas.height / 4);
+        context.strokeText(gameOver, canvas.width / 2, canvas.height / 5);
     } else if (isHighScore()) {
         asteroids = [];
         bullets = [];
         saucer.alive = false;
 
-        context.font = "30px hyperspace";
         context.textAlign = "left";
         let leftAlign = -canvas.width / 4;
         let lineHeight = 30;
@@ -873,6 +868,9 @@ function endScreenSpace() {
  * Draw score and highscore
  */
 function drawScores() {
+    context.strokeStyle = "white";
+    context.shadowBlur = BLUR_AMOUNT;
+
     context.font = "30px hyperspace";
     context.textAlign = "left";
     context.strokeText(padInteger(score), 10, 30);
@@ -986,5 +984,5 @@ function configureWindow() {
     context.fillStyle = "black";
     context.strokestyle = "white";
     context.fillRect(0, 0, canvas.width, canvas.height);
-    context.strokeRect(0, 0, canvas.width, canvas.height);
+    context.strokeRect(0, 0, canvas.width - 1, canvas.height - 1);
 }
