@@ -748,11 +748,10 @@ function drawIntroText() {
     if (displayHighScores) {
         let high = "high scores";
         context.strokeText(high, canvas.width / 2, 2 * canvas.height / 7);
-        context.textAlign = "left";
-        let leftAlign = -canvas.width / 13;
+        context.textAlign = "center";
         for (let i = 0; i < highScores.length; i++) {
             let line = (i+1).toString() + ". " + highScores[i].score + " " + highScores[i].name;
-            context.strokeText(line, canvas.width / 2 + leftAlign, canvas.height / 3 + (i+1) * 30);
+            context.strokeText(line, canvas.width / 2, canvas.height / 3 + (i+1) * 30);
         }
     }
 }
@@ -794,16 +793,16 @@ function drawEndText() {
         saucer.alive = false;
 
         context.textAlign = "left";
-        let leftAlign = -canvas.width / 4;
-        let lineHeight = 30;
         let tenBest = "your score is one of the ten best\n";
         let enterInitials = "please enter your initials\n";
         let pushRotate = "push rotate to select letter";
         let pushHyperspace = "push fire when letter is correct"
-        context.strokeText(tenBest, canvas.width / 2 + leftAlign, canvas.height / 4);
-        context.strokeText(enterInitials, canvas.width / 2 + leftAlign, canvas.height / 4 + lineHeight);
-        context.strokeText(pushRotate, canvas.width / 2 + leftAlign, canvas.height / 4 + 2 * lineHeight);
-        context.strokeText(pushHyperspace, canvas.width / 2 + leftAlign, canvas.height / 4 + 3 * lineHeight);
+        let lineHeight = 30;
+        let textAlign = -context.measureText(tenBest).width / 2;
+        context.strokeText(tenBest, canvas.width / 2 + textAlign, canvas.height / 4);
+        context.strokeText(enterInitials, canvas.width / 2 + textAlign, canvas.height / 4 + lineHeight);
+        context.strokeText(pushRotate, canvas.width / 2 + textAlign, canvas.height / 4 + 2 * lineHeight);
+        context.strokeText(pushHyperspace, canvas.width / 2 + textAlign, canvas.height / 4 + 3 * lineHeight);
 
         context.font = "50px hyperspace";
         context.textAlign = "center";
@@ -972,8 +971,13 @@ function toRadians(angle) {
  * that are shared across the game.
  */
 function configureWindow() {
-    context.canvas.width = window.innerWidth;
-    context.canvas.height = window.innerHeight;
+    const logicalWidth = 1366;
+    const logicalHeight = 768;
+    canvas.width = logicalWidth;
+    canvas.height = logicalHeight;
+    canvas.style.width = window.innerWidth + "px";
+    canvas.style.height = window.innerHeight + "px";
+
     context.shadowColor = "white";
     context.shadowOffsetX = 0;
     context.shadowOffsetY = 0;
