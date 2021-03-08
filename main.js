@@ -495,6 +495,9 @@ document.addEventListener("keydown", function(event) {
         } else if (event.code === SPACE) {
             endScreenSpace();
         }
+    } else if (event.code === SPACE && !keyMap.get(event.code)) {
+        player.fire();
+        keyMap.set(event.code, true);
     } else {
         keyMap.set(event.code, true);
     }
@@ -711,9 +714,6 @@ function handlePlayerInput() {
         if (keyMap.get(ARROW_UP)) {
             player.dx += 0.1 * Math.cos(toRadians(player.heading));
             player.dy -= 0.1 * Math.sin(toRadians(player.heading));
-        }
-        if (keyMap.get(SPACE)) {
-            player.fire();
         }
     }
 }
