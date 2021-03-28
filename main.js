@@ -495,7 +495,7 @@ document.addEventListener("keydown", function(event) {
         } else if (event.code === SPACE) {
             endScreenSpace();
         }
-    } else if (event.code === SPACE && !keyMap.get(event.code)) {
+    } else if (event.code === SPACE && !keyMap.get(event.code) && player.alive) {
         player.fire();
         keyMap.set(event.code, true);
     } else {
